@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 #[derive(Debug)]
-struct Particle {
+pub struct Particle {
     mass: f32,
     charge: f32,
     position: Vec<f64>,
@@ -83,21 +83,24 @@ pub trait Bondable {
 }
 
 // needs to implement Bondable, Charge, Bonded, HasPhysics, IsSpatial
-struct Atom {
-    particle: Particle,
-    element: Elements,
-    id: String,
-    neighbors: Vec<String>
+pub struct Atom {
+    pub particle: Particle,
+    pub element: Elements,
+    pub id: String,
+    pub neighbors: Vec<String>
 }
 
 impl Atom {
-    fn new(element: Elements) -> Self {
-        Self {
+    fn new(element: Elements, ff: &impl ForceField) -> Self {
+        let mut atom = Self {
             particle: Particle::new(),
             element: element,
             id: Uuid::new_v4().to_string(),
             neighbors: Vec::new()
-        }
+        };
+        atom.particle.set_mass(ff.mass(&atom.element));
+        atom.particle.set_charge(ff.charge(&atom.element));
+        return atom;
     }
 }
 
@@ -119,11 +122,44 @@ struct SpaceTime {
     dimensions: u32
 }
 
-enum Elements {
+// it's useful to include the mass
+pub enum Elements {
     H,
     C,
     O,
     X
+}
+
+pub trait ForceField {
+    fn mass(&self, element: &Elements) -> f32;
+    fn charge(&self, element: &Elements) -> f32;
+    fn atom(&self, element: Elements) -> Atom;
+}
+
+pub struct SIN {
+    pub description: String
+}
+
+impl ForceField for SIN {
+    fn atom(&self, element: Elements) -> Atom {
+        Atom::new(element, self)
+    }
+    fn mass(&self, element: &Elements) -> f32 {
+        match element {
+            Elements::H => 1.0,
+            Elements::C => 2.0,
+            Elements::O => 3.0,
+            Elements::X => 99.0
+        }
+    }
+    fn charge(&self, element: &Elements) -> f32 {
+        match element {
+            Elements::H => 1.0,
+            Elements::C => 2.0,
+            Elements::O => 3.0,
+            Elements::X => 99.0
+        }
+    }
 }
 
 // stolen from Legion, which I also wrote so that's fine.
