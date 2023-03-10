@@ -57,6 +57,10 @@ pub trait HasCharge {
     fn set_charge(&mut self, charge: f32);
 }
 
+pub trait HasElement {
+    fn get_element(&self) -> &Elements;
+}
+
 pub trait HasPhysics {
     fn set_position(self, pos: Vec<f64>);
     fn set_velocity(self, vel: Vec<f64>);
@@ -101,6 +105,11 @@ impl Atom {
         return atom;
     }
 }
+impl HasElement for Atom {
+    fn get_element(&self) -> &Elements {
+        return &self.element;
+    }
+}
 
 impl Connected for Atom {
     fn force(&self) {
@@ -138,4 +147,14 @@ struct SpaceTime {
     particles: HashMap<String, Atom>,
     time: f64,
     dimensions: u32
+}
+
+impl ContainsParticles for SpaceTime {
+    fn get_particles(&self) -> &HashMap<String, Atom> {
+        return &self.particles;
+    }
+}
+
+pub trait ContainsParticles {
+    fn get_particles(&self) -> &HashMap<String, Atom>;
 }

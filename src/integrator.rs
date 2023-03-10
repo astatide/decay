@@ -1,10 +1,13 @@
 use uuid::Uuid;
+use crate::ff::ForceField;
+use crate::particle::ContainsParticles;
+use crate::particle::HasElement;
 use crate::particle::HasPhysics;
 use crate::particle::Connected;
 
 pub trait Integrator {
     fn integrate(&self, particle: &impl HasPhysics);
-    fn calculate_forces(&self, particle: &(impl HasPhysics + Connected));
+    fn calculate_forces(&self, particle: &(impl HasPhysics + Connected + HasElement), world: &impl ContainsParticles, sin: &impl ForceField);
 }
 
 pub enum IntegratorTypes {
@@ -29,8 +32,19 @@ impl Integrator for Leapfrog {
     fn integrate(&self, particle: &impl HasPhysics) {
        
     }
-    fn calculate_forces(&self, particle: &(impl HasPhysics + Connected)) {
+    fn calculate_forces(&self, particle: &(impl HasPhysics + Connected + HasElement), world: &impl ContainsParticles, sin: &impl ForceField) {
         let neighbors = particle.get_neighbors();
+        for neighbor in neighbors.iter() {
+            // get the actual atom
+            let _na = world.get_particles().get(neighbor);
+            match _na {
+                Some(na) => {
+                    let pwi = sin.pairwise_interactions(particle.get_element(), na.get_element());
+                    pwi(1);
+                },
+                None => ()
+            }
+        }
     }
 }
 

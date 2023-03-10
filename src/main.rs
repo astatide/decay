@@ -8,5 +8,5 @@ mod integrator;
 fn main() {
     println!("Hello, world!");
     let _sin = ff::SIN { description: "SIN".to_string() };
-    println!("{:?}", _sin.atom(ff::Elements::H));
+    println!("{:?}", _sin.atom(ff::Elements::H(0)));
 }
