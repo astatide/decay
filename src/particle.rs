@@ -83,6 +83,7 @@ pub trait Bondable {
 }
 
 // needs to implement Bondable, Charge, Bonded, HasPhysics, IsSpatial
+#[derive(Debug)]
 pub struct Atom {
     pub particle: Particle,
     pub element: Elements,
@@ -123,6 +124,7 @@ struct SpaceTime {
 }
 
 // it's useful to include the mass
+#[derive(Debug)]
 pub enum Elements {
     H,
     C,
