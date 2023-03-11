@@ -6,6 +6,7 @@ use winit::{
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
 use crate::gin::State;
+use log::{debug, error, log_enabled, info, Level};
 
 mod gin;
 
@@ -20,27 +21,28 @@ pub async fn run() {
         }
     }
     
+    info!("TEST");
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
     #[cfg(target_arch = "wasm32")]
-{
-    // Winit prevents sizing with CSS, so we have to set
-    // the size manually when on web.
-    use winit::dpi::PhysicalSize;
-    window.set_inner_size(PhysicalSize::new(450, 400));
-    
-    use winit::platform::web::WindowExtWebSys;
-    web_sys::window()
-        .and_then(|win| win.document())
-        .and_then(|doc| {
-            let dst = doc.get_element_by_id("decay")?;
-            let canvas = web_sys::Element::from(window.canvas());
-            dst.append_child(&canvas).ok()?;
-            Some(())
-        })
-        .expect("Couldn't append canvas to document body.");
-}
+    {
+        // Winit prevents sizing with CSS, so we have to set
+        // the size manually when on web.
+        use winit::dpi::PhysicalSize;
+        window.set_inner_size(PhysicalSize::new(450, 400));
+        
+        use winit::platform::web::WindowExtWebSys;
+        web_sys::window()
+            .and_then(|win| win.document())
+            .and_then(|doc| {
+                let dst = doc.get_element_by_id("wasm-example")?;
+                let canvas = web_sys::Element::from(window.canvas());
+                dst.append_child(&canvas).ok()?;
+                Some(())
+            })
+            .expect("Couldn't append canvas to document body.");
+    }
 
     // Adding in the state!
     let mut state = State::new(window).await;

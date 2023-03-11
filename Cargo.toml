@@ -7,6 +7,9 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+# this is a fix for compiling on an M1 Mac
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
