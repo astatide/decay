@@ -3,6 +3,7 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
 };
+
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
 use crate::gin::State;
@@ -50,6 +51,7 @@ pub async fn run() {
     event_loop.run(move |event, _, control_flow| match event {
         Event::RedrawRequested(window_id) if window_id == state.window().id() => {
             state.update();
+            // web_sys::console::log_2(&"%s : Hello World".into());
             match state.render() {
                 Ok(_) => {}
                 // Reconfigure the surface if lost
