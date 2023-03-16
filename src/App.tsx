@@ -8,15 +8,15 @@ import { decorator } from '@babel/types';
 
 import init, { run } from "./decay/decay.js";
 
-function runWasm()
+async function runWasm()
 {
-  init().then(() => {
-    console.log("WASM Loaded");
-    run();
-  })
+  return async () => {
+    await run();
+  }
 }
 
 function App() {
+  init();
   return (
     <div className="App">
     <header className="App-header">

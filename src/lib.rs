@@ -16,7 +16,7 @@ pub async fn run() {
     cfg_if::cfg_if! {
         if #[cfg(target_arch = "wasm32")] {
             std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-            console_log::init_with_level(log::Level::Warn).expect("Couldn't initialize logger");
+            // console_log::init_with_level(log::Level::Warn).expect("error initializing logger");
         } else {
             env_logger::init();
         }
@@ -31,7 +31,7 @@ pub async fn run() {
         // Winit prevents sizing with CSS, so we have to set
         // the size manually when on web.
         use winit::dpi::PhysicalSize;
-        window.set_inner_size(PhysicalSize::new(450, 400));
+        window.set_inner_size(PhysicalSize::new(500, 500));
         
         use winit::platform::web::WindowExtWebSys;
         web_sys::window()
@@ -48,9 +48,12 @@ pub async fn run() {
     // Adding in the state!
     let mut state = State::new(window).await;
 
+    let mut dt = 0.0;
+
     event_loop.run(move |event, _, control_flow| match event {
         Event::RedrawRequested(window_id) if window_id == state.window().id() => {
             state.update();
+            dt += 0.02;
             // web_sys::console::log_2(&"%s : Hello World".into());
             match state.render() {
                 Ok(_) => {}
