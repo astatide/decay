@@ -2,6 +2,7 @@ use winit::{window::Window, event::{WindowEvent, KeyboardInput, ElementState, Vi
 use wgpu::util::DeviceExt;
 use log::{debug, error, log_enabled, info, Level};
 use cgmath::prelude::*;
+use rand::{Rng, prelude::Distribution};
 
 mod camera;
 mod time;
@@ -35,6 +36,7 @@ pub(crate) struct State {
     time_uniform: time::TimeUniform,
     instances: Vec<instance::Instance>,
     instance_buffer: wgpu::Buffer,
+    rng: rand::rngs::ThreadRng,
 }
 // unsafe impl bytemuck::Pod for Vertex {}
 // unsafe impl bytemuck::Zeroable for Vertex {}
@@ -279,6 +281,7 @@ impl State {
         let instances = (0..instance::NUM_INSTANCES_PER_ROW).flat_map(|z| {
             (0..instance::NUM_INSTANCES_PER_ROW).map(move |x| {
                 let position = cgmath::Vector3 { x: x as f32, y: 0.0, z: z as f32 } - instance::INSTANCE_DISPLACEMENT;
+                let original_position = cgmath::Vector3 { x: x as f32, y: 0.0, z: z as f32 } - instance::INSTANCE_DISPLACEMENT;
 
                 let rotation = if position.is_zero() {
                     // this is needed so an object at (0, 0, 0) won't get scaled to zero
@@ -289,7 +292,7 @@ impl State {
                 };
 
                 instance::Instance {
-                    position, rotation,
+                    position, original_position, rotation,
                 }
             })
         }).collect::<Vec<_>>();
@@ -301,6 +304,8 @@ impl State {
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
             }
         );
+
+        let rng = rand::thread_rng();
 
 
         Self {
@@ -326,6 +331,7 @@ impl State {
             time_uniform,
             instances,
             instance_buffer,
+            rng,
         }
     }
 
@@ -361,10 +367,17 @@ impl State {
 
         // this is from the challenge.rs; look how the instance position update and modification is done!
         // looks like we update the buffer; interesting!
+        // start up some random jitter, just to test.
         for instance in &mut self.instances {
             let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
             let current = instance.rotation;
+            let mut rng = rand::thread_rng();
+            let sign: rand::distributions::Uniform<f32> = rand::distributions::Uniform::from(-1.0..1.1);
             instance.rotation = amount * current;
+            // instance.position = instance.original_position;
+            instance.position.x += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
+            instance.position.y += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
+            instance.position.z += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
         }
         let instance_data = self
             .instances

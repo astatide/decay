@@ -23,6 +23,7 @@ cfg-if = "1"
 pollster = "0.3.0" # awaiting the future; simple
 bytemuck = { version = "1.13.1", features = [ "derive" ] }
 cgmath = "0.18" # linear algebra baby!
+rand = "0.8.5"
 # the other regular dependencies...
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]

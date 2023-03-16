@@ -65,6 +65,16 @@ impl CameraUniform {
     is_backward_pressed: bool,
     is_left_pressed: bool,
     is_right_pressed: bool,
+    is_rotate_right: bool,
+    is_rotate_left: bool,
+    is_rotate_up: bool,
+    is_rotate_down: bool,
+    is_pan_up: bool,
+    is_pan_down: bool,
+    is_pan_left: bool,
+    is_pan_right: bool,
+    is_zoom_in: bool,
+    is_zoom_out: bool,
 }
 
 impl CameraController {
@@ -75,11 +85,20 @@ impl CameraController {
             is_backward_pressed: false,
             is_left_pressed: false,
             is_right_pressed: false,
+            is_rotate_right: false,
+            is_rotate_left: false,
+            is_rotate_up: false,
+            is_rotate_down: false,
+            is_pan_up: false,
+            is_pan_down: false,
+            is_pan_left: false,
+            is_pan_right: false,
+            is_zoom_in: false,
+            is_zoom_out: false,
         }
     }
 
     pub fn process_events(&mut self, event: &WindowEvent) -> bool {
-        info!("YAY");
         match event {
             WindowEvent::KeyboardInput {
                 input: KeyboardInput {
@@ -92,19 +111,33 @@ impl CameraController {
                 let is_pressed = *state == ElementState::Pressed;
                 match keycode {
                     VirtualKeyCode::W | VirtualKeyCode::Up => {
-                        self.is_forward_pressed = is_pressed;
+                        // self.is_forward_pressed = is_pressed;
+                        self.is_zoom_in = is_pressed;
+                        true
+                    }
+                    VirtualKeyCode::Q | VirtualKeyCode::Up => {
+                        // self.is_forward_pressed = is_pressed;
+                        self.is_rotate_up = is_pressed;
+                        true
+                    }
+                    VirtualKeyCode::E | VirtualKeyCode::Up => {
+                        // self.is_forward_pressed = is_pressed;
+                        self.is_rotate_down = is_pressed;
                         true
                     }
                     VirtualKeyCode::A | VirtualKeyCode::Left => {
-                        self.is_left_pressed = is_pressed;
+                        // self.is_left_pressed = is_pressed;
+                        self.is_rotate_left = is_pressed;
                         true
                     }
                     VirtualKeyCode::S | VirtualKeyCode::Down => {
-                        self.is_backward_pressed = is_pressed;
+                        // self.is_backward_pressed = is_pressed;
+                        self.is_zoom_out = is_pressed;
                         true
                     }
                     VirtualKeyCode::D | VirtualKeyCode::Right => {
-                        self.is_right_pressed = is_pressed;
+                        // self.is_right_pressed = is_pressed;
+                        self.is_rotate_right = is_pressed;
                         true
                     }
                     _ => false,
@@ -122,27 +155,45 @@ impl CameraController {
 
         // Prevents glitching when camera gets too close to the
         // center of the scene.
-        if self.is_forward_pressed && forward_mag > self.speed {
+        if self.is_zoom_in && forward_mag > self.speed {
+            // this code is for zooming in.
             camera.eye += forward_norm * self.speed;
         }
-        if self.is_backward_pressed {
+        if self.is_zoom_out {
+            // this code is for zooming out
             camera.eye -= forward_norm * self.speed;
         }
 
+        // for left and right
         let right = forward_norm.cross(camera.up);
+
+        // I know it's called 'right', but it's actually up and down.
+        // DAMN!  I nailed it in one!  I thought it would be just not using the cross product... and I was right!
+        // hahahahahaha lmao that never fucking happens.
+        // let right = camera.up;
 
         // Redo radius calc in case the fowrard/backward is pressed.
         let forward = camera.target - camera.eye;
         let forward_mag = forward.magnitude();
 
-        if self.is_right_pressed {
+        if self.is_rotate_right {
             // Rescale the distance between the target and eye so 
             // that it doesn't change. The eye therefore still 
             // lies on the circle made by the target and eye.
             camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
         }
-        if self.is_left_pressed {
+        if self.is_rotate_left {
             camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
         }
+        if self.is_rotate_up {
+            // Rescale the distance between the target and eye so 
+            // that it doesn't change. The eye therefore still 
+            // lies on the circle made by the target and eye.
+            camera.eye = camera.target - (forward + camera.up * self.speed).normalize() * forward_mag;
+        }
+        if self.is_rotate_down {
+            camera.eye = camera.target - (forward - camera.up * self.speed).normalize() * forward_mag;
+        }
+
     }
 }

@@ -3,6 +3,7 @@ use cgmath::prelude::*;
 
 pub struct Instance {
     pub position: cgmath::Vector3<f32>,
+    pub original_position: cgmath::Vector3<f32>,
     pub rotation: cgmath::Quaternion<f32>,
 }
  

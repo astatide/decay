@@ -369,6 +369,7 @@ dependencies = [
  "getrandom",
  "log",
  "pollster",
+ "rand",
  "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
