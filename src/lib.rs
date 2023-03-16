@@ -11,6 +11,8 @@ use log::{debug, error, log_enabled, info, Level};
 
 mod gin;
 
+// #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
+
 #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 pub async fn run() {
     cfg_if::cfg_if! {
@@ -53,7 +55,7 @@ pub async fn run() {
     event_loop.run(move |event, _, control_flow| match event {
         Event::RedrawRequested(window_id) if window_id == state.window().id() => {
             state.update();
-            dt += 0.02;
+            // dt += 0.02;
             // web_sys::console::log_2(&"%s : Hello World".into());
             match state.render() {
                 Ok(_) => {}

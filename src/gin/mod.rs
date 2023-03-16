@@ -1,11 +1,15 @@
 use winit::{window::Window, event::{WindowEvent, KeyboardInput, ElementState, VirtualKeyCode}};
 use wgpu::util::DeviceExt;
 use log::{debug, error, log_enabled, info, Level};
+use cgmath::prelude::*;
 
 mod camera;
 mod time;
 mod vertex;
 mod primitives;
+mod instance;
+
+const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 60.0;
 
 pub(crate) struct State {
     surface: wgpu::Surface,
@@ -29,6 +33,8 @@ pub(crate) struct State {
     time_buffer: wgpu::Buffer,
     time_bind_group: wgpu::BindGroup,
     time_uniform: time::TimeUniform,
+    instances: Vec<instance::Instance>,
+    instance_buffer: wgpu::Buffer,
 }
 // unsafe impl bytemuck::Pod for Vertex {}
 // unsafe impl bytemuck::Zeroable for Vertex {}
@@ -158,6 +164,7 @@ impl State {
                 entry_point: "vs_main", // 1.
                 buffers: &[
                     vertex::Vertex::desc(),
+                    instance::InstanceRaw::desc()
                 ],
             },
             fragment: Some(wgpu::FragmentState { // 3.
@@ -269,6 +276,33 @@ impl State {
             label: Some("time_bind_group"),
         });
 
+        let instances = (0..instance::NUM_INSTANCES_PER_ROW).flat_map(|z| {
+            (0..instance::NUM_INSTANCES_PER_ROW).map(move |x| {
+                let position = cgmath::Vector3 { x: x as f32, y: 0.0, z: z as f32 } - instance::INSTANCE_DISPLACEMENT;
+
+                let rotation = if position.is_zero() {
+                    // this is needed so an object at (0, 0, 0) won't get scaled to zero
+                    // as Quaternions can effect scale if they're not created correctly
+                    cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
+                } else {
+                    cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
+                };
+
+                instance::Instance {
+                    position, rotation,
+                }
+            })
+        }).collect::<Vec<_>>();
+        let instance_data = instances.iter().map(instance::Instance::to_raw).collect::<Vec<_>>();
+        let instance_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: Some("Instance Buffer"),
+                contents: bytemuck::cast_slice(&instance_data),
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            }
+        );
+
+
         Self {
             window,
             surface,
@@ -290,6 +324,8 @@ impl State {
             time_buffer,
             time_bind_group,
             time_uniform,
+            instances,
+            instance_buffer,
         }
     }
 
@@ -313,14 +349,34 @@ impl State {
     pub fn update(&mut self) {
         self.camera_controller.update_camera(&mut self.camera);
         self.camera_uniform.update_view_proj(&self.camera);
-        // TODO MOVE TIME
-        self.time[0] += 0.0002;
-        self.time[1] += 0.0002;
-        self.time[2] += 0.0002;
-        self.time[3] += 0.0002;
-        self.time_uniform.update_time(self.time);
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
-        self.queue.write_buffer(&self.time_buffer, 0, bytemuck::cast_slice(&[self.time_uniform]));
+
+        // TODO MOVE TIME
+        // self.time[0] += 0.0002;
+        // self.time[1] += 0.0002;
+        // self.time[2] += 0.0002;
+        // self.time[3] += 0.0002;
+        // self.time_uniform.update_time(self.time);
+        // self.queue.write_buffer(&self.time_buffer, 0, bytemuck::cast_slice(&[self.time_uniform]));
+
+        // this is from the challenge.rs; look how the instance position update and modification is done!
+        // looks like we update the buffer; interesting!
+        for instance in &mut self.instances {
+            let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
+            let current = instance.rotation;
+            instance.rotation = amount * current;
+        }
+        let instance_data = self
+            .instances
+            .iter()
+            .map(instance::Instance::to_raw)
+            .collect::<Vec<_>>();
+    
+        self.queue.write_buffer(
+                &self.instance_buffer,
+                0,
+                bytemuck::cast_slice(&instance_data),
+            );
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -355,9 +411,17 @@ impl State {
             render_pass.set_bind_group(1, &self.time_bind_group, &[]);
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
 
-            render_pass.draw_indexed(0..self.num_indices, 0, 0..1); // 2.
+            // instances!
+            render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+
+            // UPDATED!
+            // Make sure if you add new instances to the Vec, that you recreate the instance_buffer and as well as camera_bind_group, otherwise your new instances won't show up correctly.
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
+
+            // render_pass.draw_indexed(0..self.num_indices, 0, 0..1); // 2.
             
-            render_pass.draw(0..self.num_vertices, 0..1);
+            // render_pass.draw(0..self.num_vertices, 0..1);
         }
     
         // submit will accept anything that implements IntoIter
