@@ -13,6 +13,9 @@ mod gin;
 
 // #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 
+static mut HEIGHT: u32 = 200;
+static mut WIDTH: u32 = 200;
+
 // static mut STATE: &State;
 #[cfg_attr(target_arch="wasm32", wasm_bindgen)]
 pub struct DecayExport {
@@ -37,13 +40,13 @@ impl DecayExport {
             // Winit prevents sizing with CSS, so we have to set
             // the size manually when on web.
             use winit::dpi::PhysicalSize;
-            window.set_inner_size(PhysicalSize::new(1000, 1000));
+            window.set_inner_size(PhysicalSize::new(200, 200));
             
             use winit::platform::web::WindowExtWebSys;
             web_sys::window()
                 .and_then(|win| win.document())
                 .and_then(|doc| {
-                    let dst = doc.get_element_by_id("wasm-example")?;
+                    let dst = doc.get_element_by_id("decay")?;
                     let canvas = web_sys::Element::from(window.canvas());
                     dst.append_child(&canvas).ok()?;
                     Some(())
@@ -59,17 +62,9 @@ impl DecayExport {
         Self {
             state: state,
         }
-    }
-
-    // extern fn resize(&mut self, width: u32, height: u32)
-    // {
-    //     self.state.resize(winit::dpi::PhysicalSize::new(width, height) )
-    // }    
+    } 
 
 }
-
-static mut HEIGHT: u32 = 1000;
-static mut WIDTH: u32 = 1000;
 
 #[cfg_attr(target_arch="wasm32", wasm_bindgen)]
 pub unsafe fn resize(width: u32, height: u32)
@@ -78,7 +73,7 @@ pub unsafe fn resize(width: u32, height: u32)
     WIDTH = width;
 }    
 
-#[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
+#[cfg_attr(target_arch="wasm32", wasm_bindgen)]
 pub async fn run() {
     let event_loop = EventLoop::new();
     let mut decay = DecayExport::new(&event_loop).await;
@@ -87,12 +82,10 @@ pub async fn run() {
         Event::RedrawRequested(window_id) if window_id == decay.state.window().id() => {
             decay.state.update();
             unsafe {
-                if (decay.state.size.height != HEIGHT)
+                if (decay.state.size.height != HEIGHT || decay.state.size.width != WIDTH)
                 {
-                    decay.state.resize(winit::dpi::PhysicalSize::new(WIDTH, HEIGHT))
-                }
-                if (decay.state.size.width != WIDTH)
-                {
+                    // decay.state.size.height = HEIGHT;
+                    // decay.state.size.width = WIDTH;
                     decay.state.resize(winit::dpi::PhysicalSize::new(WIDTH, HEIGHT))
                 }
 

@@ -1,6 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-import init, { run, resize } from "../decay/decay.js";
+import init, { run, resize } from "decay";
+
+function resizeJS()
+{
+    HEIGHT = window.innerHeight;
+    WIDTH = window.innerWidth/2;
+    resize(WIDTH, HEIGHT);
+}
+
+let HEIGHT = window.innerHeight;
+let WIDTH = window.innerWidth/2;
 
 interface EmptyTest {
     proteinFile: string;
@@ -8,38 +18,40 @@ interface EmptyTest {
     width: number;
 }
 
-class Decay extends React.Component<EmptyTest>
-{
-    state: EmptyTest;
-    constructor(props: EmptyTest) {
-        super(props);
-        this.state = { proteinFile: "", height: props.height, width: props.width } as EmptyTest;
-        init();
-    }
+const divStyle = {
+    backgroundColor: "rgba(1, 205, 254, 0.25)",
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    height: HEIGHT,
+    width: WIDTH,
+    alignItems: 'center',
+    display: 'grid',
+    justifyContent: 'center',
+  };
 
-    runWasm()
-    {
-        return async () => {
-            await run();
-        }
-    }
+const innerStyle = {
+    color: 'blue',
+    backgroundColor: "rgba(1, 205, 254, 0.25)",
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    height: HEIGHT,
+    width: WIDTH,
+    alignItems: 'center',
+    display: 'flex',
+    justifyContent: 'center',
+  };
 
-    resizeJS()
-    {
-        // resize(this.state.width, this.state.height);
-        resize(100, 100);
-    }
-
-    render() {
-        return (
-            <div className="Decay">
-              <body id="wasm-example">
-                {/* <button onClick={this.runWasm}>Start!</button> */}
-                <button onClick={this.resizeJS}>Resize!</button>
-              </body>
+function Decay(props: EmptyTest) {
+    init().then(() => {});
+    return (
+        <div style={divStyle}>
+            <div style={divStyle}>
+                <button onClick={resizeJS}>Resize!</button>
+                <button onClick={run}>Start!</button>
+                <div className="Decay" id="decay" style={divStyle} />
             </div>
-        )
-    }
+        </div>
+    )
 }
 
-export { Decay }
+export default Decay;
