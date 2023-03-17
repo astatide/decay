@@ -3,6 +3,8 @@ use wgpu::util::DeviceExt;
 use log::{debug, error, log_enabled, info, Level};
 use cgmath::prelude::*;
 use rand::{Rng, prelude::Distribution};
+#[cfg(target_arch="wasm32")]
+use wasm_bindgen::prelude::*;
 
 mod camera;
 mod time;
