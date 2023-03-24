@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Deref, borrow::BorrowMut};
 
 use winit::{window::Window, event::{WindowEvent, KeyboardInput, ElementState, VirtualKeyCode}};
 use wgpu::util::DeviceExt;
@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 // use super::
 
-use crate::dynamics::{particle::HasPhysics, atom::{Atom, IsAtomic}, integrator::Leapfrog, spaceTime::{ContainsParticles, ContainsAtomicParticles}, ff::{self, ForceField}};
+use crate::dynamics::{particle::{HasPhysics, self}, atom::{Atom, IsAtomic}, integrator::{Leapfrog, Integrator}, spaceTime::{ContainsParticles, ContainsAtomicParticles, self, SpaceTime}, ff::{self, ForceField}};
 
 use super::{camera, time, vertex, primitives, instance};
 
@@ -49,9 +49,11 @@ pub(crate) struct State {
     instances: Vec<instance::Instance>,
     instance_buffer: wgpu::Buffer,
     rng: rand::rngs::ThreadRng,
-    particles: Option<HashMap<String, Box<dyn IsAtomic>>>,
+    // particles: Option<HashMap<String, Box<dyn IsAtomic>>>,
+    spaceTime: SpaceTime,
     dimensions: u32,
     integrator: Leapfrog,
+    sin: ff::SIN
 }
 // unsafe impl bytemuck::Pod for Vertex {}
 // unsafe impl bytemuck::Zeroable for Vertex {}
@@ -61,12 +63,6 @@ pub const INDICES: &[u16] = &[
     1, 2, 4,
     2, 3, 4,
 ];
-
-impl ContainsAtomicParticles for State {
-    fn get_particles(&self) -> Option<&HashMap<String, Box<dyn IsAtomic>>> {
-        return self.particles.as_ref();
-    }
-}
 
 impl State {
     // Creating some of the wgpu types requires async code
@@ -330,13 +326,15 @@ impl State {
         let mut particles = HashMap::<String, Box<dyn IsAtomic>>::new();
         let dimensions: u32 = 3;
 
+        let mut spaceTime = SpaceTime::new();
         // let's just make some atoms!
         // let's make them use some of the instance things.
-        let _sin = ff::SIN { description: "SIN".to_string() };
+        let sin = ff::SIN { description: "SIN".to_string() };
         for i in 0..instance::NUM_INSTANCES_PER_ROW.pow(2) {
-            let atom = Box::new(_sin.atom(ff::Elements::H(0)));
+            let atom = Box::new(sin.atom(ff::Elements::H(0)));
             particles.insert(atom.id.clone(), atom as Box<dyn IsAtomic>); // we clone/copy the string to avoid problems with lifetimes.
         }
+        spaceTime.set_atomic_particles(Some(particles));
 
 
         let integrator = Leapfrog::new();
@@ -365,10 +363,15 @@ impl State {
             instances,
             instance_buffer,
             rng,
-            particles: Some(particles),
+            spaceTime,
             dimensions,
-            integrator
+            integrator,
+            sin
         }
+    }
+
+    pub fn integrator(&mut self) -> &Leapfrog {
+        &self.integrator
     }
 
     pub fn window(&self) -> &Window {
@@ -394,7 +397,35 @@ impl State {
         self.camera_uniform.update_view_proj(&self.camera);
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
 
-        // update the dynamics!
+        // update the dynamics!  DO NOT WRITE DURING THIS TIME.
+        // let newWorld: HashMap::<String, Box<dyn IsAtomic>> = HashMap::new();
+        let mut accVec = HashMap::<String, Vec<f64>>::new();
+        match ContainsAtomicParticles::get_particles(&self.spaceTime) {
+            Some(world) => {
+                for (name, _) in world.iter() {
+                    accVec.insert(name.clone(), self.integrator.calculate_neighboring_forces(name.clone(), &self.spaceTime, &self.sin));
+                }
+            }
+            None => ()
+        }
+
+        // NOW we want to write.  So we use a different method: get mut particles!
+        for (atom, acc) in accVec.iter_mut() {
+            match ContainsAtomicParticles::get_mut_particles(&mut self.spaceTime).as_mut() {
+                Some(world) => {
+                    // accVec.insert(name.clone(), self.integrator.calculate_neighboring_forces(name.clone(), &self.spaceTime, &self.sin));
+                    let particle = world.get_mut(atom);
+                    match particle {
+                        Some(a) => {
+                            let (pos, vel) = self.integrator.integrate(a, acc.to_vec());
+                            a.set_position(pos);
+                        }
+                        None => ()
+                    }
+                }
+                None => ()
+            }
+        }
 
         // TODO MOVE TIME
         // self.time[0] += 0.0002;

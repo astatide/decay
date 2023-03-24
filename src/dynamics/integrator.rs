@@ -23,7 +23,7 @@ pub fn distance(posA: &Box<dyn IsAtomic>, posB: &Box<dyn IsAtomic>) -> Vec<f64> 
 }
 
 pub trait Integrator {
-    fn integrate(&self, particle: &mut impl HasPhysics, acc: Vec<f64>);
+    fn integrate(&self, particle: &Box<dyn IsAtomic>, acc: Vec<f64>) -> (Vec<f64>, Vec<f64>);
     fn calculate_forces(&self, name: String, world: &impl ContainsParticles, sin: &impl ForceField) -> Vec<f64>;
     fn calculate_neighboring_forces(&self, name: String, world: &impl ContainsAtomicParticles, sin: &impl ForceField) -> Vec<f64>;
 }
@@ -49,7 +49,7 @@ impl Leapfrog {
 }
 
 impl Integrator for Leapfrog {
-    fn integrate(&self, atom: &mut impl HasPhysics, acc: Vec<f64>) {
+    fn integrate(&self, atom: &Box<dyn IsAtomic>, acc: Vec<f64>) -> (Vec<f64>, Vec<f64>){
         let mut pos = atom.get_position().clone();
         let mut vel = atom.get_velocity().clone();
         for i in 0..pos.len() {
@@ -58,8 +58,9 @@ impl Integrator for Leapfrog {
         for i in 0..vel.len() {
             vel[i] += acc[i]*self.dt*0.5;
         }
-        atom.set_position(pos);
-        atom.set_velocity(vel);
+        return (pos, vel)
+        // atom.set_position(pos);
+        // atom.set_velocity(vel);
     }
     fn calculate_forces(&self, name: String, world: &impl ContainsParticles, sin: &impl ForceField) -> Vec<f64> {
         todo!()
