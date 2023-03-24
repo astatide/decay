@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::Sub;
 use uuid::Uuid;
 use crate::ff::ForceField;
 use crate::ff::Elements;
@@ -22,18 +23,30 @@ impl Particle {
     }
 }
 
-impl HasPhysics for Particle {
+// impl Sub for Particle {
+//     type Output = Self;
+// }
+
+impl HasPhysics<Particle> for Particle {
     fn get_position(&self) -> &Vec<f64> {
         return &self.position;
     }
-    fn set_position(mut self, pos: Vec<f64>) {
+    fn set_position(&mut self, pos: Vec<f64>) {
         self.position = pos;
     }
     fn get_velocity(&self) -> &Vec<f64> {
         return &self.velocity;
     }
-    fn set_velocity(mut self, vel: Vec<f64>) {
+    fn set_velocity(&mut self, vel: Vec<f64>) {
         self.velocity = vel;
+    }
+    fn distance(&self, other: &Self) -> Vec<f64> {
+        let mut r: Vec<f64> = Vec::new();
+        let other_ijk = other.get_position();
+        for (idim, dim) in self.get_position().iter().enumerate() {
+            r.push(*dim - other_ijk[idim]);
+        }
+        return r;
     }
 }
 
@@ -61,11 +74,16 @@ pub trait HasElement {
     fn get_element(&self) -> &Elements;
 }
 
-pub trait HasPhysics {
-    fn set_position(self, pos: Vec<f64>);
-    fn set_velocity(self, vel: Vec<f64>);
+pub trait HasParticle {
+    fn get_particle(&self) -> &Particle;
+}
+
+pub trait HasPhysics<T> {
+    fn set_position(&mut self, pos: Vec<f64>);
+    fn set_velocity(&mut self, vel: Vec<f64>);
     fn get_position(&self) -> &Vec<f64>;
     fn get_velocity(&self) -> &Vec<f64>;
+    fn distance(&self, other: &T) -> Vec<f64>;
 }
 
 pub trait IsSpatial {
@@ -122,18 +140,28 @@ impl Connected for Atom {
         
     }
 }
-impl HasPhysics for Atom {
+
+impl HasParticle for Atom {
+    fn get_particle(&self) -> &Particle {
+        return &self.particle;
+    }
+}
+
+impl HasPhysics<Atom> for Atom {
     fn get_position(&self) -> &Vec<f64> {
         return self.particle.get_position();
     }
-    fn set_position(self, pos: Vec<f64>) {
+    fn set_position(&mut self, pos: Vec<f64>) {
         self.particle.set_position(pos);
     }
     fn get_velocity(&self) -> &Vec<f64> {
         return self.particle.get_velocity();
     }
-    fn set_velocity(self, vel: Vec<f64>) {
+    fn set_velocity(&mut self, vel: Vec<f64>) {
         self.particle.set_velocity(vel);
+    }
+    fn distance(&self, other: &Self) -> Vec<f64> {
+        return self.particle.distance(other.get_particle());
     }
 }
 

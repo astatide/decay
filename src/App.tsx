@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
 import  Decay  from "./decay-react/decay";
+import '@fontsource/public-sans';
 
 const AppStyle = {
   alignItems: 'center', 

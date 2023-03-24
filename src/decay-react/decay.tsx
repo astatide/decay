@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import Button from '@mui/joy/Button';
 
 import init, { run, resize } from "decay";
 
@@ -46,8 +47,8 @@ function Decay(props: EmptyTest) {
     return (
         <div style={divStyle}>
             <div style={divStyle}>
-                <button onClick={resizeJS}>Resize!</button>
-                <button onClick={run}>Start!</button>
+                <Button onClick={resizeJS}>Resize!</Button>
+                <Button onClick={run}>Start!</Button>
                 <div className="Decay" id="decay" style={divStyle} />
             </div>
         </div>
