@@ -7,6 +7,7 @@ use winit::{
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
 use crate::gin::State;
+mod dynamics;
 use log::{debug, error, log_enabled, info, Level};
 
 mod gin;

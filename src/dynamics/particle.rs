@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::ops::Sub;
 use uuid::Uuid;
-use crate::ff::ForceField;
-use crate::ff::Elements;
+use crate::dynamics::ff::ForceField;
+use crate::dynamics::ff::Elements;
 
 #[derive(Debug)]
 pub struct Particle {
@@ -48,6 +48,9 @@ impl HasPhysics<Particle> for Particle {
         }
         return r;
     }
+    fn get_particle(&self) -> &Particle {
+        return &self;
+    }
 }
 
 impl HasMass for Particle {
@@ -84,6 +87,7 @@ pub trait HasPhysics<T> {
     fn get_position(&self) -> &Vec<f64>;
     fn get_velocity(&self) -> &Vec<f64>;
     fn distance(&self, other: &T) -> Vec<f64>;
+    fn get_particle(&self) -> &Particle;
 }
 
 pub trait IsSpatial {
@@ -141,12 +145,6 @@ impl Connected for Atom {
     }
 }
 
-impl HasParticle for Atom {
-    fn get_particle(&self) -> &Particle {
-        return &self.particle;
-    }
-}
-
 impl HasPhysics<Atom> for Atom {
     fn get_position(&self) -> &Vec<f64> {
         return self.particle.get_position();
@@ -163,6 +161,9 @@ impl HasPhysics<Atom> for Atom {
     fn distance(&self, other: &Self) -> Vec<f64> {
         return self.particle.distance(other.get_particle());
     }
+    fn get_particle(&self) -> &Particle {
+        return &self.particle;
+    }
 }
 
 // needs to implement Bondable
@@ -171,18 +172,22 @@ struct Molecule {
     neighbors: HashMap<String, Vec<String>>
 }
 
+// uh oh, this feels like bad rust code.
+// TODO: bleh, just get this running then sort out some of the nasty trait business here!
+pub trait IsAtom<Atom>: HasPhysics<Atom> + HasElement {}
+
 struct SpaceTime {
-    particles: HashMap<String, Atom>,
+    particles: HashMap<String, Box<dyn IsAtom<Atom>>>,
     time: f64,
     dimensions: u32
 }
 
-impl ContainsParticles for SpaceTime {
-    fn get_particles(&self) -> &HashMap<String, Atom> {
+impl ContainsParticles<Atom> for SpaceTime {
+    fn get_particles(&self) -> &HashMap<String, Box<dyn IsAtom<Atom>>> {
         return &self.particles;
     }
 }
 
-pub trait ContainsParticles {
-    fn get_particles(&self) -> &HashMap<String, Atom>;
+pub trait ContainsParticles<T> {
+    fn get_particles(&self) -> &HashMap<String, Box<dyn IsAtom<T>>>;
 }

@@ -2,17 +2,18 @@ use std::iter::Enumerate;
 use std::ops::Sub;
 
 use uuid::Uuid;
-use crate::ff::ForceField;
-use crate::particle::ContainsParticles;
-use crate::particle::HasElement;
-use crate::particle::HasParticle;
-use crate::particle::HasPhysics;
-use crate::particle::Connected;
-use crate::particle::Particle;
+use crate::dynamics::ff::ForceField;
+use crate::dynamics::particle::Atom;
+use crate::dynamics::particle::ContainsParticles;
+use crate::dynamics::particle::HasElement;
+use crate::dynamics::particle::HasParticle;
+use crate::dynamics::particle::HasPhysics;
+use crate::dynamics::particle::Connected;
+use crate::dynamics::particle::Particle;
 
-pub trait Integrator<T> {
+pub trait Integrator<T, X> {
     fn integrate(&self, particle: &mut impl HasPhysics<T>, acc: Vec<f64>);
-    fn calculate_forces(&self, particle: &(impl HasPhysics<T> + Connected + HasElement), world: &impl ContainsParticles, sin: &impl ForceField) -> Vec<f64>;
+    fn calculate_forces(&self, particle: &(impl HasPhysics<T> + Connected + HasElement), world: &impl ContainsParticles<X>, sin: &impl ForceField) -> Vec<f64>;
 }
 
 pub enum IntegratorTypes {
@@ -35,7 +36,7 @@ impl Leapfrog {
     }
 }
 
-impl Integrator<Particle> for Leapfrog {
+impl Integrator<Particle, Atom> for Leapfrog {
     fn integrate(&self, particle: &mut impl HasPhysics<Particle>, acc: Vec<f64>) {
         let mut pos = particle.get_position().clone();
         let mut vel = particle.get_velocity().clone();
@@ -50,7 +51,7 @@ impl Integrator<Particle> for Leapfrog {
     }
 
     // this is _probably_ not the ideal way to like, do this, but I don't care at the moment lmao.
-    fn calculate_forces(&self, particle: &(impl HasPhysics<Particle> + Connected + HasElement), world: &impl ContainsParticles, sin: &impl ForceField) -> Vec<f64> {
+    fn calculate_forces(&self, particle: &(impl HasPhysics<Particle> + Connected + HasElement), world: &impl ContainsParticles<Atom>, sin: &impl ForceField) -> Vec<f64> {
         let neighbors = particle.get_neighbors();
         let mut force_sum: Vec<f64> = vec![0.0; particle.get_position().len()]; // use the vec macro to prefill with 0.
         for neighbor in neighbors.iter() {

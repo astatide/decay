@@ -1,10 +1,12 @@
 // use crate::particle::ForceField;
-use crate::ff::ForceField; // have to add and use the trait!
 use decay::run;
+use dynamics::ff::ForceField; // have to add and use the trait!
+use dynamics::ff;
 
-mod particle;
-mod ff;
-mod integrator;
+mod dynamics;
+// mod particle;
+// mod ff;
+// mod integrator;
 
 fn main() {
     pollster::block_on(decay::run());

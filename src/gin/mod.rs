@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use winit::{window::Window, event::{WindowEvent, KeyboardInput, ElementState, VirtualKeyCode}};
 use wgpu::util::DeviceExt;
 use log::{debug, error, log_enabled, info, Level};
@@ -5,12 +7,17 @@ use cgmath::prelude::*;
 use rand::{Rng, prelude::Distribution};
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
+use crate::dynamics::particle::{Atom, IsAtom, ContainsParticles};
+
+// use super::
+use super::dynamics;
 
 mod camera;
 mod time;
 mod vertex;
 mod primitives;
 mod instance;
+
 
 const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 60.0;
 
@@ -39,6 +46,8 @@ pub(crate) struct State {
     instances: Vec<instance::Instance>,
     instance_buffer: wgpu::Buffer,
     rng: rand::rngs::ThreadRng,
+    particles: HashMap<String, Box<dyn IsAtom<Atom>>>,
+    dimensions: u32
 }
 // unsafe impl bytemuck::Pod for Vertex {}
 // unsafe impl bytemuck::Zeroable for Vertex {}
@@ -48,6 +57,12 @@ pub const INDICES: &[u16] = &[
     1, 2, 4,
     2, 3, 4,
 ];
+
+impl ContainsParticles<Atom> for State {
+    fn get_particles(&self) -> &HashMap<String, Box<dyn IsAtom<Atom>>> {
+        return &self.particles;
+    }
+}
 
 impl State {
     // Creating some of the wgpu types requires async code
@@ -308,7 +323,8 @@ impl State {
         );
 
         let rng = rand::thread_rng();
-
+        let particles = HashMap::<String, Box<dyn IsAtom<Atom>>>::new();
+        let dimensions: u32 = 3;
 
         Self {
             window,
@@ -334,6 +350,8 @@ impl State {
             instances,
             instance_buffer,
             rng,
+            particles,
+            dimensions
         }
     }
 
