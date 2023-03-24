@@ -1,4 +1,4 @@
-use crate::dynamics::particle::Atom;
+use crate::dynamics::atom::Atom;
 
 // it's useful to include the mass
 #[derive(Debug)]

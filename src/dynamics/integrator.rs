@@ -3,17 +3,29 @@ use std::ops::Sub;
 
 use uuid::Uuid;
 use crate::dynamics::ff::ForceField;
-use crate::dynamics::particle::Atom;
-use crate::dynamics::particle::ContainsParticles;
-use crate::dynamics::particle::HasElement;
-use crate::dynamics::particle::HasParticle;
+use crate::dynamics::atom::Atom;
+use crate::dynamics::spaceTime::ContainsParticles;
+use crate::dynamics::atom::HasElement;
 use crate::dynamics::particle::HasPhysics;
-use crate::dynamics::particle::Connected;
-use crate::dynamics::particle::Particle;
+use crate::dynamics::atom::Connected;
 
-pub trait Integrator<T, X> {
-    fn integrate(&self, particle: &mut impl HasPhysics<T>, acc: Vec<f64>);
-    fn calculate_forces(&self, particle: &(impl HasPhysics<T> + Connected + HasElement), world: &impl ContainsParticles<X>, sin: &impl ForceField) -> Vec<f64>;
+use super::particle;
+use super::spaceTime::{ContainsAtomicParticles};
+use super::atom::IsAtomic;
+
+pub fn distance(posA: &Box<dyn IsAtomic>, posB: &Box<dyn IsAtomic>) -> Vec<f64> {
+    let mut r: Vec<f64> = Vec::new();
+    let other_ijk = posB.get_position();
+    for (idim, dim) in posA.get_position().iter().enumerate() {
+        r.push(*dim - other_ijk[idim]);
+    }
+    return r;
+}
+
+pub trait Integrator {
+    fn integrate(&self, particle: &mut impl HasPhysics, acc: Vec<f64>);
+    fn calculate_forces(&self, name: String, world: &impl ContainsParticles, sin: &impl ForceField) -> Vec<f64>;
+    fn calculate_neighboring_forces(&self, name: String, world: &impl ContainsAtomicParticles, sin: &impl ForceField) -> Vec<f64>;
 }
 
 pub enum IntegratorTypes {
@@ -36,43 +48,52 @@ impl Leapfrog {
     }
 }
 
-impl Integrator<Particle, Atom> for Leapfrog {
-    fn integrate(&self, particle: &mut impl HasPhysics<Particle>, acc: Vec<f64>) {
-        let mut pos = particle.get_position().clone();
-        let mut vel = particle.get_velocity().clone();
+impl Integrator for Leapfrog {
+    fn integrate(&self, atom: &mut impl HasPhysics, acc: Vec<f64>) {
+        let mut pos = atom.get_position().clone();
+        let mut vel = atom.get_velocity().clone();
         for i in 0..pos.len() {
             pos[i] += (vel[i]*self.dt) + (0.5*acc[i]*self.dt.powi(2));
         }
         for i in 0..vel.len() {
             vel[i] += acc[i]*self.dt*0.5;
         }
-        particle.set_position(pos);
-        particle.set_velocity(vel);
+        atom.set_position(pos);
+        atom.set_velocity(vel);
     }
-
+    fn calculate_forces(&self, name: String, world: &impl ContainsParticles, sin: &impl ForceField) -> Vec<f64> {
+        todo!()
+    }
     // this is _probably_ not the ideal way to like, do this, but I don't care at the moment lmao.
-    fn calculate_forces(&self, particle: &(impl HasPhysics<Particle> + Connected + HasElement), world: &impl ContainsParticles<Atom>, sin: &impl ForceField) -> Vec<f64> {
-        let neighbors = particle.get_neighbors();
-        let mut force_sum: Vec<f64> = vec![0.0; particle.get_position().len()]; // use the vec macro to prefill with 0.
-        for neighbor in neighbors.iter() {
-            // get the actual atom
-            let _na = world.get_particles().get(neighbor);
-            match _na {
-                Some(na) => {
-                    let pwi = sin.pairwise_interactions(particle.get_element(), na.get_element());
-                    let d = particle.distance(na.get_particle());
-                    let r = d.iter().map(|&z| z*z).sum::<f64>().sqrt(); // wait, did this work?  Huh!  Crazy nifty.
-                    let r_ijk = d.iter().map(|&z| z / r).collect::<Vec<f64>>(); // collect is what turns the iterator back in a vector, apparently.
-                    // Now!  Get the forces!
-                    let force = pwi(r as f32);
-                    for (i, z) in r_ijk.iter().enumerate() {
-                        force_sum[i] = force as f64 * z; // cast back, etc.
+    fn calculate_neighboring_forces(&self, name: String, world: &impl ContainsAtomicParticles, sin: &impl ForceField) -> Vec<f64> {
+        let atoms = &world.get_particles();
+        match atoms {
+            Some(atomWorld) => {
+                let atom = &atomWorld[&name];
+                let neighbors = atom.get_relevant_neighbors();
+                let mut force_sum: Vec<f64> = vec![0.0; atom.get_position().len()]; // use the vec macro to prefill with 0.
+                match neighbors {
+                    Some(neighborNames) => {
+                        for neighbor in neighborNames.iter() {
+                            // get the actual atom
+                            let na = &atomWorld[neighbor];
+                            let pwi = sin.pairwise_interactions(atom.get_element(), na.get_element());
+                            let d = distance(atom, na);
+                            let r = d.iter().map(|&z| z*z).sum::<f64>().sqrt(); // wait, did this work?  Huh!  Crazy nifty.
+                            let r_ijk = d.iter().map(|&z| z / r).collect::<Vec<f64>>(); // collect is what turns the iterator back in a vector, apparently.
+                            // Now!  Get the forces!
+                            let force = pwi(r as f32);
+                            for (i, z) in r_ijk.iter().enumerate() {
+                                force_sum[i] = force as f64 * z; // cast back, etc.
+                            }
+                        }
                     }
-                },
-                None => ()
+                    None => ()
+                }
+                return force_sum;
             }
+            None => Vec::<f64>::new()
         }
-        return force_sum;
     }
 }
 
