@@ -9,3 +9,5 @@ The goal?  Learn Rust, have some modular components, get a feel for ECS + shader
 Because it's molecular dynamics and written in Rust, something along the lines of oxidation seemed too straightforward; but what is oxidation, if not some sort of decay in a lot of ways?
 
 Also you know, super gothy :bat:
+
+I'm journaling along as I go and writing articles up on my [website](https://astatide.lgbt)
