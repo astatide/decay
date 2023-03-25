@@ -11,6 +11,6 @@ mod dynamics;
 fn main() {
     pollster::block_on(decay::run());
     println!("Hello, world!");
-    let _sin = ff::SIN { description: "SIN".to_string() };
-    println!("{:?}", _sin.atom(ff::Elements::H(0)));
+    // let _sin = ff::SIN { description: "SIN".to_string() };
+    // println!("{:?}", _sin.atom(ff::Elements::H(0)));
 }

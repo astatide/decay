@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 // use super::
 
-use crate::dynamics::{particle::{HasPhysics, self}, atom::{Atom, IsAtomic}, integrator::{Leapfrog, Integrator}, spaceTime::{ContainsParticles, self, SpaceTime}, ff::{self, ForceField}};
+use crate::dynamics::{particle::{HasPhysics, self}, atom::{Atom, IsAtomic}, integrator::{Leapfrog, Integrator}, spaceTime::{ContainsParticles, self, SpaceTime}, ff::{self, ForceField, Elements}};
 
 use super::{camera, time, vertex, primitives, instance};
 
@@ -50,10 +50,10 @@ pub(crate) struct State {
     instance_buffer: wgpu::Buffer,
     rng: rand::rngs::ThreadRng,
     // particles: Option<HashMap<String, Box<dyn IsAtomic>>>,
-    spaceTime: SpaceTime<Atom>,
+    spaceTime: SpaceTime<Atom<Elements>>,
     dimensions: u32,
     integrator: Leapfrog,
-    sin: ff::SIN
+    sin: ff::SIN<Elements>
 }
 // unsafe impl bytemuck::Pod for Vertex {}
 // unsafe impl bytemuck::Zeroable for Vertex {}
@@ -323,16 +323,16 @@ impl State {
         );
 
         let rng = rand::thread_rng();
-        let mut particles = HashMap::<String, Box<Atom>>::new();
+        let mut particles = HashMap::<String, Box<Atom<Elements>>>::new();
         let dimensions: u32 = 3;
 
-        let mut spaceTime = SpaceTime::<Atom>::new();
+        let mut spaceTime = SpaceTime::<Atom<Elements>>::new();
         // let's just make some atoms!
         // let's make them use some of the instance things.
-        let sin = ff::SIN { description: "SIN".to_string() };
+        let sin = ff::SIN::<Elements> { description: "SIN".to_string(), particle_type: Vec::new() };
         for i in 0..instance::NUM_INSTANCES_PER_ROW.pow(2) {
             let atom = Box::new(sin.atom(ff::Elements::H(0)));
-            particles.insert(atom.id.clone(), atom as Box<Atom>); // we clone/copy the string to avoid problems with lifetimes.
+            particles.insert(atom.id.clone(), atom as Box<Atom<Elements>>); // we clone/copy the string to avoid problems with lifetimes.
         }
         spaceTime.set_particles(Some(particles));
 

@@ -18,7 +18,6 @@ pub trait HasPhysics {
 
 pub trait IsSpatial {
     fn generate_spatial_coordinates(nDim: u32);
-    fn set_position(pos: Vec<f64>);
 }
 pub trait HasCharge {
     fn force(&self);

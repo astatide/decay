@@ -6,10 +6,11 @@ use crate::dynamics::ff::Elements;
 use super::particle::HasCharge;
 use super::particle::HasMass;
 use super::particle::HasPhysics;
+use super::particle::IsSpatial;
 use super::particle::Particle;
 
-pub trait HasElement {
-    fn get_element(&self) -> &Elements;
+pub trait HasElement<T> {
+    fn get_element(&self) -> &T;
 }
 
 pub trait Connected {
@@ -18,12 +19,12 @@ pub trait Connected {
     // fn modify_bonded_list(&self, other: &impl Connected);
 }
 
-pub trait IsAtomic: HasPhysics + HasElement {}
+pub trait IsAtomic<T>: HasPhysics + HasElement<T> {}
 
 // needs to implement Connected, Charge, Bonded, HasPhysics, IsSpatial
 #[derive(Debug)]
-pub struct Atom {
-    pub element: Elements,
+pub struct Atom<T> {
+    pub element: T,
     pub id: String,
     pub neighbors: Vec<String>,
     pub mass: f32,
@@ -32,8 +33,8 @@ pub struct Atom {
     pub velocity: Vec<f64>
 }
 
-impl Atom {
-    pub fn new(element: Elements, ff: &impl ForceField) -> Self {
+impl<T> Atom<T> {
+    pub fn new(element: T, ff: &impl ForceField<T>) -> Self {
         let mass = ff.mass(&element);
         let charge = ff.charge(&element);
 
@@ -49,15 +50,15 @@ impl Atom {
     }
 }
 
-impl IsAtomic for Atom {}
+impl<T> IsAtomic<T> for Atom<T> {}
 
-impl HasElement for Atom {
-    fn get_element(&self) -> &Elements {
+impl<T> HasElement<T> for Atom<T> {
+    fn get_element(&self) -> &T {
         return &self.element;
     }
 }
 
-impl Connected for Atom {
+impl<T> Connected for Atom<T> {
     fn force(&self) {
         
     }
@@ -69,13 +70,13 @@ impl Connected for Atom {
     // }
 }
 
-impl HasMass for Atom {
+impl<T> HasMass for Atom<T> {
     fn set_mass(&mut self, mass: f32) {
         self.mass = mass;
     }
 }
 
-impl HasCharge for Atom {
+impl<T> HasCharge for Atom<T> {
     fn force(&self) {
         
     }
@@ -84,7 +85,15 @@ impl HasCharge for Atom {
     }
 }
 
-impl HasPhysics for Atom {
+impl<T> IsSpatial for Atom<T> {
+    fn generate_spatial_coordinates(nDim: u32) {
+        for i in 0..nDim {
+
+        }
+    }
+}
+
+impl<T> HasPhysics for Atom<T> {
     fn get_position(&self) -> &Vec<f64> {
         return &self.position;
     }

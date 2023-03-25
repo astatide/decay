@@ -9,6 +9,7 @@ use crate::dynamics::atom::HasElement;
 use crate::dynamics::particle::HasPhysics;
 use crate::dynamics::atom::Connected;
 
+use super::ff::Elements;
 use super::particle;
 use super::atom::IsAtomic;
 
@@ -21,9 +22,9 @@ pub fn distance<T: HasPhysics>(posA: &Box<T>, posB: &Box<T>) -> Vec<f64> {
     return r;
 }
 
-pub trait Integrator<T> {
+pub trait Integrator<T, U> {
     fn integrate(&self, particle: &Box<T>, acc: Vec<f64>) -> (Vec<f64>, Vec<f64>);
-    fn calculate_forces(&self, name: String, world: &impl ContainsParticles<T>, sin: &impl ForceField) -> Vec<f64>;
+    fn calculate_forces(&self, name: String, world: &impl ContainsParticles<T>, sin: &impl ForceField<U>) -> Vec<f64>;
 }
 
 pub enum IntegratorTypes {
@@ -46,7 +47,7 @@ impl Leapfrog {
     }
 }
 
-impl<T: IsAtomic> Integrator<T> for Leapfrog {
+impl<T: IsAtomic<Elements>> Integrator<T, Elements> for Leapfrog {
     fn integrate(&self, atom: &Box<T>, acc: Vec<f64>) -> (Vec<f64>, Vec<f64>){
         let mut pos = atom.get_position().clone();
         let mut vel = atom.get_velocity().clone();
@@ -61,7 +62,7 @@ impl<T: IsAtomic> Integrator<T> for Leapfrog {
         // atom.set_velocity(vel);
     }
     // this is _probably_ not the ideal way to like, do this, but I don't care at the moment lmao.
-    fn calculate_forces(&self, name: String, world: &impl ContainsParticles<T>, sin: &impl ForceField) -> Vec<f64> {
+    fn calculate_forces(&self, name: String, world: &impl ContainsParticles<T>, sin: &impl ForceField<Elements>) -> Vec<f64> {
         let atoms = &world.get_particles();
         match atoms {
             Some(atomWorld) => {

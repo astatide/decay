@@ -9,11 +9,11 @@ pub enum Elements {
     X(u32)
 }
 
-pub trait ForceField {
-    fn mass(&self, element: &Elements) -> f32;
-    fn charge(&self, element: &Elements) -> f32;
-    fn atom(&self, element: Elements) -> Atom;
-    fn pairwise_interactions(&self, e1: &Elements, e2: &Elements) -> Box<dyn Fn(f32) -> f32>;
+pub trait ForceField<T> {
+    fn mass(&self, element: &T) -> f32;
+    fn charge(&self, element: &T) -> f32;
+    fn atom(&self, element: T) -> Atom<T>;
+    fn pairwise_interactions(&self, e1: &T, e2: &T) -> Box<dyn Fn(f32) -> f32>;
 }
 
 fn GenerateBasicPairwiseInteractions(k: f32, exp: f32) -> Box<dyn Fn(f32) -> f32> {
@@ -22,12 +22,13 @@ fn GenerateBasicPairwiseInteractions(k: f32, exp: f32) -> Box<dyn Fn(f32) -> f32
     return Box::new(move |r: f32| -> f32 { k / (r.powf(exp))})
 }
 
-pub struct SIN {
-    pub description: String
+pub struct SIN<T> {
+    pub description: String,
+    pub particle_type: Vec<T>
 }
 
-impl ForceField for SIN {
-    fn atom(&self, element: Elements) -> Atom {
+impl ForceField<Elements> for SIN<Elements> {
+    fn atom(&self, element: Elements) -> Atom<Elements> {
         Atom::new(element, self)
     }
     fn mass(&self, element: &Elements) -> f32 {
