@@ -331,13 +331,18 @@ impl State {
         // let's make them use some of the instance things.
         let sin = ff::SIN::<Elements> { description: "SIN".to_string(), particle_type: Vec::new() };
         
-        // Add in an atom for each triangle!
+        // Add in an atom for each triangle!  Fake a bond, make it work designers!
+        let mut priorAtom: String = "".to_string();
         for instance in &mut instances {
             let mut atom = sin.atom(ff::Elements::H(0));
             atom.generate_spatial_coordinates(3);
             instance.id = Some(atom.id.clone());
             let pos = vec!(instance.position.x.to_f64().unwrap(), instance.position.y.to_f64().unwrap(), instance.position.z.to_f64().unwrap());
             atom.set_position(pos);
+            if priorAtom != "".to_string() {
+                atom.neighbors = vec!(priorAtom);
+            }
+            priorAtom = atom.id.clone();
             particles.insert(atom.id.clone(), Box::new(atom) as Box<Atom<Elements>>); // we clone/copy the string to avoid problems with lifetimes.
         }
         spaceTime.set_particles(Some(particles));
@@ -422,8 +427,10 @@ impl State {
                     let particle = world.get_mut(atom);
                     match particle {
                         Some(a) => {
-                            let (pos, vel) = self.integrator.integrate(a, acc.to_vec());
+                            let (pos, vel, acc) = self.integrator.integrate(a, acc.to_vec());
                             a.set_position(pos);
+                            a.set_velocity(vel);
+                            a.set_acceleration(acc);
                         }
                         None => ()
                     }
@@ -461,13 +468,13 @@ impl State {
             match &self.spaceTime.get_particles() {
                 Some(world) => {
                     let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
-                    instance.position.x = atom_pos.get(0).unwrap().to_f32().unwrap();
-                    instance.position.y = atom_pos.get(1).unwrap().to_f32().unwrap();
-                    instance.position.z = atom_pos.get(2).unwrap().to_f32().unwrap();
+                    instance.position.x += atom_pos.get(0).unwrap().to_f32().unwrap()/1000.0;
+                    instance.position.y += atom_pos.get(1).unwrap().to_f32().unwrap()/1000.0;
+                    instance.position.z += atom_pos.get(2).unwrap().to_f32().unwrap()/1000.0;
                 }
                 None => ()
             }
-            
+
             // instance.position = instance.original_position;
             // old random jitter;
             // instance.position.x += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);

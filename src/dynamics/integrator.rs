@@ -1,6 +1,9 @@
 use std::iter::Enumerate;
 use std::ops::Sub;
 
+use cgmath::num_traits::{abs, ToPrimitive};
+use rand::Rng;
+use rand::prelude::Distribution;
 use uuid::Uuid;
 use crate::dynamics::ff::ForceField;
 use crate::dynamics::atom::Atom;
@@ -23,7 +26,7 @@ pub fn distance<T: HasPhysics>(posA: &Box<T>, posB: &Box<T>) -> Vec<f64> {
 }
 
 pub trait Integrator<T, U> {
-    fn integrate(&self, particle: &Box<T>, acc: Vec<f64>) -> (Vec<f64>, Vec<f64>);
+    fn integrate(&self, particle: &Box<T>, acc: Vec<f64>) -> (Vec<f64>, Vec<f64>, Vec<f64>);
     fn calculate_forces(&self, name: String, world: &impl ContainsParticles<T>, sin: &impl ForceField<U>) -> Vec<f64>;
 }
 
@@ -48,22 +51,29 @@ impl Leapfrog {
 }
 
 impl<T: IsAtomic<Elements>> Integrator<T, Elements> for Leapfrog {
-    fn integrate(&self, atom: &Box<T>, acc: Vec<f64>) -> (Vec<f64>, Vec<f64>){
+    fn integrate(&self, atom: &Box<T>, mut acc: Vec<f64>) -> (Vec<f64>, Vec<f64>, Vec<f64>){
         let mut pos = atom.get_position().clone();
         let mut vel = atom.get_velocity().clone();
+        let mut oAcc = atom.get_acceleration().clone();
+        for i in 0..pos.len() {
+            acc[i] += oAcc[i];
+        }
         for i in 0..pos.len() {
             pos[i] += (vel[i]*self.dt) + (0.5*acc[i]*self.dt.powi(2));
         }
         for i in 0..vel.len() {
             vel[i] += acc[i]*self.dt*0.5;
         }
-        return (pos, vel)
+        return (pos, vel, acc)
         // atom.set_position(pos);
         // atom.set_velocity(vel);
     }
     // this is _probably_ not the ideal way to like, do this, but I don't care at the moment lmao.
     fn calculate_forces(&self, name: String, world: &impl ContainsParticles<T>, sin: &impl ForceField<Elements>) -> Vec<f64> {
         let atoms = &world.get_particles();
+        let mut rng = rand::thread_rng();
+        let sign: rand::distributions::Uniform<f32> = rand::distributions::Uniform::from(-1.0..1.1);
+        let applyJitter = true;
         match atoms {
             Some(atomWorld) => {
                 let atom = &atomWorld[&name];
@@ -81,11 +91,16 @@ impl<T: IsAtomic<Elements>> Integrator<T, Elements> for Leapfrog {
                             // Now!  Get the forces!
                             let force = pwi(r as f32);
                             for (i, z) in r_ijk.iter().enumerate() {
-                                force_sum[i] = force as f64 * z; // cast back, etc.
+                                force_sum[i] = force as f64 * *z; // cast back, etc.
                             }
                         }
                     }
                     None => ()
+                }
+                if applyJitter {
+                    for (_i, z) in force_sum.iter_mut().enumerate() {
+                        *z += rng.gen::<f64>()/100.0 * sign.sample(&mut rng).to_f64().unwrap();
+                    }
                 }
                 return force_sum;
             }

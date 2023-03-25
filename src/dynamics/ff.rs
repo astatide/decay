@@ -49,10 +49,10 @@ impl ForceField<Elements> for SIN<Elements> {
     }
     fn pairwise_interactions(&self, e1: &Elements, e2: &Elements) -> Box<dyn Fn(f32) -> f32> {
         match e1 {
-            Elements::H(_) => GenerateBasicPairwiseInteractions(1.0, 2.0),
-            Elements::C(_) => GenerateBasicPairwiseInteractions(1.0, 2.0),
-            Elements::O(_) => GenerateBasicPairwiseInteractions(1.0, 2.0),
-            Elements::X(_) => GenerateBasicPairwiseInteractions(1.0, 2.0)
+            Elements::H(_) => GenerateBasicPairwiseInteractions(-1.0, 2.0),
+            Elements::C(_) => GenerateBasicPairwiseInteractions(-1.0, 2.0),
+            Elements::O(_) => GenerateBasicPairwiseInteractions(-1.0, 2.0),
+            Elements::X(_) => GenerateBasicPairwiseInteractions(-1.0, 2.0)
         }
     }
 }

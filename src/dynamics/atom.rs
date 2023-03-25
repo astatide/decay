@@ -30,7 +30,8 @@ pub struct Atom<T> {
     pub mass: f32,
     pub charge: f32,
     pub position: Vec<f64>,
-    pub velocity: Vec<f64>
+    pub velocity: Vec<f64>,
+    pub acceleration: Vec<f64>
 }
 
 impl<T> Atom<T> {
@@ -45,7 +46,8 @@ impl<T> Atom<T> {
             mass: mass,
             charge: charge,
             position: Vec::new(),
-            velocity: Vec::new()
+            velocity: Vec::new(),
+            acceleration: Vec::new()
         };
     }
 }
@@ -89,6 +91,7 @@ impl<T> IsSpatial for Atom<T> {
     fn generate_spatial_coordinates(&mut self, nDim: u32) {
         self.position = vec![0.0; nDim.try_into().unwrap()];
         self.velocity = vec![0.0; nDim.try_into().unwrap()];
+        self.acceleration = vec![0.0; nDim.try_into().unwrap()];
     }
 }
 
@@ -104,6 +107,12 @@ impl<T> HasPhysics for Atom<T> {
     }
     fn set_velocity(&mut self, vel: Vec<f64>) {
         self.velocity = vel;
+    }
+    fn get_acceleration(&self) -> &Vec<f64> {
+        return &self.acceleration;
+    }
+    fn set_acceleration(&mut self, acc: Vec<f64>) {
+        self.acceleration = acc;
     }
     fn get_relevant_neighbors(&self) -> Option<&Vec<String>> {
         return Some(self.get_neighbors());
