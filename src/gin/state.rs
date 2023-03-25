@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 // use super::
 
-use crate::dynamics::{particle::{HasPhysics, self}, atom::{Atom, IsAtomic}, integrator::{Leapfrog, Integrator}, spaceTime::{ContainsParticles, ContainsAtomicParticles, self, SpaceTime}, ff::{self, ForceField}};
+use crate::dynamics::{particle::{HasPhysics, self}, atom::{Atom, IsAtomic}, integrator::{Leapfrog, Integrator}, spaceTime::{ContainsParticles, self, SpaceTime}, ff::{self, ForceField}};
 
 use super::{camera, time, vertex, primitives, instance};
 
@@ -50,7 +50,7 @@ pub(crate) struct State {
     instance_buffer: wgpu::Buffer,
     rng: rand::rngs::ThreadRng,
     // particles: Option<HashMap<String, Box<dyn IsAtomic>>>,
-    spaceTime: SpaceTime,
+    spaceTime: SpaceTime<Atom>,
     dimensions: u32,
     integrator: Leapfrog,
     sin: ff::SIN
@@ -323,18 +323,18 @@ impl State {
         );
 
         let rng = rand::thread_rng();
-        let mut particles = HashMap::<String, Box<dyn IsAtomic>>::new();
+        let mut particles = HashMap::<String, Box<Atom>>::new();
         let dimensions: u32 = 3;
 
-        let mut spaceTime = SpaceTime::new();
+        let mut spaceTime = SpaceTime::<Atom>::new();
         // let's just make some atoms!
         // let's make them use some of the instance things.
         let sin = ff::SIN { description: "SIN".to_string() };
         for i in 0..instance::NUM_INSTANCES_PER_ROW.pow(2) {
             let atom = Box::new(sin.atom(ff::Elements::H(0)));
-            particles.insert(atom.id.clone(), atom as Box<dyn IsAtomic>); // we clone/copy the string to avoid problems with lifetimes.
+            particles.insert(atom.id.clone(), atom as Box<Atom>); // we clone/copy the string to avoid problems with lifetimes.
         }
-        spaceTime.set_atomic_particles(Some(particles));
+        spaceTime.set_particles(Some(particles));
 
 
         let integrator = Leapfrog::new();
@@ -400,10 +400,10 @@ impl State {
         // update the dynamics!  DO NOT WRITE DURING THIS TIME.
         // let newWorld: HashMap::<String, Box<dyn IsAtomic>> = HashMap::new();
         let mut accVec = HashMap::<String, Vec<f64>>::new();
-        match ContainsAtomicParticles::get_particles(&self.spaceTime) {
+        match &self.spaceTime.get_particles() {
             Some(world) => {
                 for (name, _) in world.iter() {
-                    accVec.insert(name.clone(), self.integrator.calculate_neighboring_forces(name.clone(), &self.spaceTime, &self.sin));
+                    accVec.insert(name.clone(), self.integrator.calculate_forces(name.clone(), &self.spaceTime, &self.sin));
                 }
             }
             None => ()
@@ -411,7 +411,7 @@ impl State {
 
         // NOW we want to write.  So we use a different method: get mut particles!
         for (atom, acc) in accVec.iter_mut() {
-            match ContainsAtomicParticles::get_mut_particles(&mut self.spaceTime).as_mut() {
+            match &mut self.spaceTime.get_mut_particles().as_mut() {
                 Some(world) => {
                     // accVec.insert(name.clone(), self.integrator.calculate_neighboring_forces(name.clone(), &self.spaceTime, &self.sin));
                     let particle = world.get_mut(atom);
