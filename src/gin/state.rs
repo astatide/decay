@@ -3,7 +3,7 @@ use std::{collections::HashMap, ops::Deref, borrow::BorrowMut};
 use winit::{window::Window, event::{WindowEvent, KeyboardInput, ElementState, VirtualKeyCode}};
 use wgpu::util::DeviceExt;
 use log::{debug, error, log_enabled, info, Level};
-use cgmath::prelude::*;
+use cgmath::{prelude::*, num_traits::ToPrimitive};
 use rand::{Rng, prelude::Distribution};
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 // use super::
 
-use crate::dynamics::{particle::{HasPhysics, self}, atom::{Atom, IsAtomic}, integrator::{Leapfrog, Integrator}, spaceTime::{ContainsParticles, self, SpaceTime}, ff::{self, ForceField, Elements}};
+use crate::dynamics::{particle::{HasPhysics, self, IsSpatial}, atom::{Atom, IsAtomic}, integrator::{Leapfrog, Integrator}, spaceTime::{ContainsParticles, self, SpaceTime}, ff::{self, ForceField, Elements}};
 
 use super::{camera, time, vertex, primitives, instance};
 
@@ -295,7 +295,7 @@ impl State {
             label: Some("time_bind_group"),
         });
 
-        let instances = (0..instance::NUM_INSTANCES_PER_ROW).flat_map(|z| {
+        let mut instances = (0..instance::NUM_INSTANCES_PER_ROW).flat_map(|z| {
             (0..instance::NUM_INSTANCES_PER_ROW).map(move |x| {
                 let position = cgmath::Vector3 { x: x as f32, y: 0.0, z: z as f32 } - instance::INSTANCE_DISPLACEMENT;
                 let original_position = cgmath::Vector3 { x: x as f32, y: 0.0, z: z as f32 } - instance::INSTANCE_DISPLACEMENT;
@@ -309,7 +309,7 @@ impl State {
                 };
 
                 instance::Instance {
-                    position, original_position, rotation,
+                    position, original_position, rotation, id: None
                 }
             })
         }).collect::<Vec<_>>();
@@ -330,12 +330,17 @@ impl State {
         // let's just make some atoms!
         // let's make them use some of the instance things.
         let sin = ff::SIN::<Elements> { description: "SIN".to_string(), particle_type: Vec::new() };
-        for i in 0..instance::NUM_INSTANCES_PER_ROW.pow(2) {
-            let atom = Box::new(sin.atom(ff::Elements::H(0)));
-            particles.insert(atom.id.clone(), atom as Box<Atom<Elements>>); // we clone/copy the string to avoid problems with lifetimes.
+        
+        // Add in an atom for each triangle!
+        for instance in &mut instances {
+            let mut atom = sin.atom(ff::Elements::H(0));
+            atom.generate_spatial_coordinates(3);
+            instance.id = Some(atom.id.clone());
+            let pos = vec!(instance.position.x.to_f64().unwrap(), instance.position.y.to_f64().unwrap(), instance.position.z.to_f64().unwrap());
+            atom.set_position(pos);
+            particles.insert(atom.id.clone(), Box::new(atom) as Box<Atom<Elements>>); // we clone/copy the string to avoid problems with lifetimes.
         }
         spaceTime.set_particles(Some(particles));
-
 
         let integrator = Leapfrog::new();
 
@@ -435,6 +440,15 @@ impl State {
         // self.time_uniform.update_time(self.time);
         // self.queue.write_buffer(&self.time_buffer, 0, bytemuck::cast_slice(&[self.time_uniform]));
 
+        // for instance in &mut instances {
+        //     let mut atom = sin.atom(ff::Elements::H(0));
+        //     atom.generate_spatial_coordinates(3);
+        //     instance.id = Some(atom.id.clone());
+        //     let pos = vec!(instance.position.x.to_f64().unwrap(), instance.position.y.to_f64().unwrap(), instance.position.z.to_f64().unwrap());
+        //     atom.set_position(pos);
+        //     particles.insert(atom.id.clone(), Box::new(atom) as Box<Atom<Elements>>); // we clone/copy the string to avoid problems with lifetimes.
+        // }
+
         // this is from the challenge.rs; look how the instance position update and modification is done!
         // looks like we update the buffer; interesting!
         // start up some random jitter, just to test.
@@ -444,10 +458,21 @@ impl State {
             let mut rng = rand::thread_rng();
             let sign: rand::distributions::Uniform<f32> = rand::distributions::Uniform::from(-1.0..1.1);
             instance.rotation = amount * current;
+            match &self.spaceTime.get_particles() {
+                Some(world) => {
+                    let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
+                    instance.position.x = atom_pos.get(0).unwrap().to_f32().unwrap();
+                    instance.position.y = atom_pos.get(1).unwrap().to_f32().unwrap();
+                    instance.position.z = atom_pos.get(2).unwrap().to_f32().unwrap();
+                }
+                None => ()
+            }
+            
             // instance.position = instance.original_position;
-            instance.position.x += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
-            instance.position.y += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
-            instance.position.z += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
+            // old random jitter;
+            // instance.position.x += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
+            // instance.position.y += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
+            // instance.position.z += self.rng.gen::<f32>()/100.0 * sign.sample(&mut rng);
         }
         let instance_data = self
             .instances

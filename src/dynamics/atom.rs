@@ -86,10 +86,9 @@ impl<T> HasCharge for Atom<T> {
 }
 
 impl<T> IsSpatial for Atom<T> {
-    fn generate_spatial_coordinates(nDim: u32) {
-        for i in 0..nDim {
-
-        }
+    fn generate_spatial_coordinates(&mut self, nDim: u32) {
+        self.position = vec![0.0; nDim.try_into().unwrap()];
+        self.velocity = vec![0.0; nDim.try_into().unwrap()];
     }
 }
 

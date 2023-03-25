@@ -17,7 +17,7 @@ pub trait HasPhysics {
 }
 
 pub trait IsSpatial {
-    fn generate_spatial_coordinates(nDim: u32);
+    fn generate_spatial_coordinates(&mut self, nDim: u32);
 }
 pub trait HasCharge {
     fn force(&self);
