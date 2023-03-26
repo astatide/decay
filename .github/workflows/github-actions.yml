@@ -1,4 +1,4 @@
-name: Build WASM
+name: Build WASM/React On Push
 run-name: DECAY 🦇
 on: [push]
 jobs:
