@@ -1,0 +1,11 @@
+[package]
+name = "decay_forge"
+version = "0.1.0"
+edition = "2021"
+description = "Forge crate for converting from known topology files and/or force fields into existing Decay primitives"
+license-file = "LICENSE"
+repository = "https://www.github.com/astatide/decay"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]

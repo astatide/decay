@@ -1,8 +1,4 @@
-use std::collections::HashMap;
-use std::ops::Sub;
-use uuid::Uuid;
-use crate::dynamics::ff::ForceField;
-use crate::dynamics::ff::Elements;
+use crate::legion::sin::ff::{ForceField, Elements};
 
 pub trait HasMass {
     fn set_mass(&mut self, mass: f32);

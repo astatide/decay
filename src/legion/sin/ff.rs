@@ -1,4 +1,4 @@
-use crate::dynamics::atom::Atom;
+use crate::legion::topology::atom::Atom;
 
 // it's useful to include the mass
 #[derive(Debug)]
