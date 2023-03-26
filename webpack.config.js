@@ -4,7 +4,7 @@ const path = require('path');
 module.exports = {
   entry: "./decay.js",
   output: {
-    path: path.resolve(__dirname, "pkg"),
+    path: path.resolve(__dirname, "node_modules/decay"),
     filename: "decay.js",
   },
   mode: "development"
