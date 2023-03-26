@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import './App.css';
 import  Decay  from "./decay-react/decay";
 import '@fontsource/public-sans';
@@ -21,7 +21,7 @@ function App() {
       className="DecayReact"
       style={AppStyle}
     >
-      <Decay proteinFile="yay" width={width} height={width} />
+      <Decay proteinFile="yay" width={width} height={height} />
     </body>
   );
 }

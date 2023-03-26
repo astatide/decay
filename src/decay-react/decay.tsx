@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+// import React, { useEffect, useRef, useState } from 'react';
 import Button from '@mui/joy/Button';
 
 import init, { run, resize } from "decay";
@@ -30,17 +30,17 @@ const divStyle = {
     justifyContent: 'center',
   };
 
-const innerStyle = {
-    color: 'blue',
-    backgroundColor: "rgba(1, 205, 254, 0.25)",
-    innerWidth: window.innerWidth,
-    innerHeight: window.innerHeight,
-    height: HEIGHT,
-    width: WIDTH,
-    alignItems: 'center',
-    display: 'flex',
-    justifyContent: 'center',
-  };
+// const innerStyle = {
+//     color: 'blue',
+//     backgroundColor: "rgba(1, 205, 254, 0.25)",
+//     innerWidth: window.innerWidth,
+//     innerHeight: window.innerHeight,
+//     height: HEIGHT,
+//     width: WIDTH,
+//     alignItems: 'center',
+//     display: 'flex',
+//     justifyContent: 'center',
+//   };
 
 function Decay(props: EmptyTest) {
     init().then(() => {});
