@@ -1,5 +1,5 @@
 name: Build WASM
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+run-name: DECAY
 on: [push]
 jobs:
   build:
