@@ -4,8 +4,8 @@ const path = require('path');
 module.exports = {
   entry: "./decay.js",
   output: {
-    path: path.resolve(__dirname, "node_modules/decay"),
+    path: path.resolve(__dirname, "wasm-decay-pkg"),
     filename: "decay.js",
   },
-  mode: "development"
+  mode: "production"
 };
