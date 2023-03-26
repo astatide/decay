@@ -1,7 +1,7 @@
 // import React, { useEffect, useRef, useState } from 'react';
 import Button from '@mui/joy/Button';
 
-import init, { run, resize } from "decay";
+import init, { run, resize } from "../../wasm-decay-pkg/decay";
 
 function resizeJS()
 {
