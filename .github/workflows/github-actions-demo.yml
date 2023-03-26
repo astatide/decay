@@ -6,18 +6,14 @@ jobs:
     name: Decay
     runs-on: ubuntu-latest
     steps:
-      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - run: echo "🦇 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🦇 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🦇 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
       - name: Check out repository code
         uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      # - uses: actions-rs/cargo@v1
-      #   with:
-      #     command: build
-      #     args: --release --all-features
       - uses: actions/setup-node@v3
         with:
           node-version: 16
@@ -27,6 +23,5 @@ jobs:
           version: 'latest'
       - uses: Swatinem/rust-cache@v2
       - run: npm install
-      # - run: ln -sv pkg node_modules/decay # little hack but whatever
       - run: npm run build
-      - run: echo "🍏 This job's status is ${{ job.status }}."
+      - run: echo "🦇 This job's status is ${{ job.status }}."
