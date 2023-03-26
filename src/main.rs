@@ -1,9 +1,9 @@
 // use crate::particle::ForceField;
 use decay::run;
-use dynamics::ff::ForceField; // have to add and use the trait!
-use dynamics::ff;
+use legion::ff::ForceField; // have to add and use the trait!
+use legion::ff;
 
-mod dynamics;
+mod legion;
 // mod particle;
 // mod ff;
 // mod integrator;

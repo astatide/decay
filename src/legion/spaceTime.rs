@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::ops::Sub;
 use uuid::Uuid;
-use crate::dynamics::ff::ForceField;
-use crate::dynamics::ff::Elements;
+use crate::legion::ff::ForceField;
+use crate::legion::ff::Elements;
 
 use super::atom::Atom;
 use super::atom::IsAtomic;

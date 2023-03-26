@@ -5,12 +5,12 @@ use cgmath::num_traits::{abs, ToPrimitive};
 use rand::Rng;
 use rand::prelude::Distribution;
 use uuid::Uuid;
-use crate::dynamics::ff::ForceField;
-use crate::dynamics::atom::Atom;
-use crate::dynamics::spaceTime::ContainsParticles;
-use crate::dynamics::atom::HasElement;
-use crate::dynamics::particle::HasPhysics;
-use crate::dynamics::atom::Connected;
+use crate::legion::ff::ForceField;
+use crate::legion::atom::Atom;
+use crate::legion::spaceTime::ContainsParticles;
+use crate::legion::atom::HasElement;
+use crate::legion::particle::HasPhysics;
+use crate::legion::atom::Connected;
 
 use super::ff::Elements;
 use super::particle;
