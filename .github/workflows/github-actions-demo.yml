@@ -26,6 +26,6 @@ jobs:
           # Optional version of wasm-pack to install(eg. 'v0.9.1', 'latest')
           version: 'latest'
       - run: npm install
-      - run: ln -sv pkg node_modules/decay # little hack but whatever
+      # - run: ln -sv pkg node_modules/decay # little hack but whatever
       - run: npm run build
       - run: echo "🍏 This job's status is ${{ job.status }}."
