@@ -2,6 +2,9 @@
 name = "decay"
 version = "0.1.0"
 edition = "2021"
+description = "A general educational scientific toy/tool base for simulations; specifically focused on molecular or brownian dynamics, it also includes a visualizer and a react app."
+license-file = "LICENSE"
+repository = "https://www.github.com/astatide/decay"
 
 # this adds support for WASM and wgpu and compiling down to something a browser can run
 [lib]
