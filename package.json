@@ -16,7 +16,7 @@
     "@types/react-dom": "^18.0.11",
     "@wasm-tool/wasm-pack-plugin": "^1.6.0",
     "copy-webpack-plugin": "^11.0.0",
-    "decay": "file:./wasm-decay-pkg",
+    "decay": "file:./src/wasm-decay-pkg",
     "fetch": "^1.1.0",
     "fs": "^0.0.1-security",
     "path-browserify": "^1.0.1",
@@ -33,7 +33,7 @@
     "build": "npm run build:wasm && npm install && npm run build:react",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "build:wasm": "wasm-pack build --target web --out-dir wasm-decay-pkg",
+    "build:wasm": "wasm-pack build --target web --out-dir src/wasm-decay-pkg",
     "build:react": "react-scripts build"
   },
   "eslintConfig": {
