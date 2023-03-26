@@ -1,12 +1,8 @@
 // use crate::particle::ForceField;
 use decay::run;
-use legion::ff::ForceField; // have to add and use the trait!
-use legion::ff;
+use legion::sin::ff::ForceField; // have to add and use the trait!
 
 mod legion;
-// mod particle;
-// mod ff;
-// mod integrator;
 
 fn main() {
     pollster::block_on(decay::run());

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::ops::Sub;
 use uuid::Uuid;
-use crate::legion::ff::ForceField;
-use crate::legion::ff::Elements;
+use crate::legion::sin::ff::ForceField;
+use crate::legion::sin::ff::Elements;
 use super::particle::HasCharge;
 use super::particle::HasMass;
 use super::particle::HasPhysics;

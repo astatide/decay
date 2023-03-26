@@ -1,17 +1,5 @@
 use std::collections::HashMap;
-use std::ops::Sub;
-use uuid::Uuid;
-use crate::legion::ff::ForceField;
-use crate::legion::ff::Elements;
-
-use super::atom::Atom;
-use super::atom::IsAtomic;
-use super::atom::HasElement;
-use super::particle::HasPhysics;
-
-// uh oh, this feels like bad rust code.
-// // TODO: bleh, just get this running then sort out some of the nasty trait business here!
-// pub trait IsAtom<Atom>: HasPhysics<Atom> + HasElement {}
+use crate::legion::sin::ff::{ForceField, Elements};
 
 // #[derive(Debug)]
 

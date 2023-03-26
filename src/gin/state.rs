@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 
 // use super::
 
-use crate::legion::{particle::{HasPhysics, self, IsSpatial}, atom::{Atom, IsAtomic}, integrator::{Leapfrog, Integrator}, spaceTime::{ContainsParticles, self, SpaceTime}, ff::{self, ForceField, Elements}};
+use crate::legion::{topology::particle::{HasPhysics, self, IsSpatial}, topology::atom::{Atom, IsAtomic}, dynamics::integrator::{Leapfrog, Integrator}, topology::spaceTime::{ContainsParticles, self, SpaceTime}, sin::ff::{self, ForceField, Elements}};
 
 use super::{camera, time, vertex, primitives, instance};
 

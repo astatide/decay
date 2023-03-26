@@ -1,20 +1,11 @@
-use std::iter::Enumerate;
-use std::ops::Sub;
-
-use cgmath::num_traits::{abs, ToPrimitive};
+use cgmath::num_traits::{ToPrimitive};
 use rand::Rng;
 use rand::prelude::Distribution;
 use uuid::Uuid;
-use crate::legion::ff::ForceField;
-use crate::legion::atom::Atom;
-use crate::legion::spaceTime::ContainsParticles;
-use crate::legion::atom::HasElement;
-use crate::legion::particle::HasPhysics;
-use crate::legion::atom::Connected;
-
-use super::ff::Elements;
-use super::particle;
-use super::atom::IsAtomic;
+use crate::legion::sin::ff::{ForceField, Elements};
+use crate::legion::topology::atom::IsAtomic;
+use crate::legion::topology::spaceTime::ContainsParticles;
+use crate::legion::topology::particle::HasPhysics;
 
 pub fn distance<T: HasPhysics>(posA: &Box<T>, posB: &Box<T>) -> Vec<f64> {
     let mut r: Vec<f64> = Vec::new();
