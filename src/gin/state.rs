@@ -9,7 +9,7 @@ use rand::{Rng, prelude::Distribution};
 use wasm_bindgen::prelude::*;
 
 
-use crate::legion::{topology::particle::{HasPhysics, self, IsSpatial}, topology::atom::{Atom, IsAtomic}, dynamics::integrator::{Leapfrog, Integrator}, topology::spaceTime::{ContainsParticles, self, SpaceTime}, sin::ff::{self, ForceField, Elements}};
+use crate::legion::{topology::particle::{HasPhysics, self, IsSpatial}, topology::atom::{Atom, IsAtomic, Connected}, dynamics::integrator::{Leapfrog, Integrator}, topology::spaceTime::{ContainsParticles, self, SpaceTime}, sin::ff::{self, ForceField, Elements}};
 
 use super::{camera, time, vertex, primitives, instance};
 
@@ -41,9 +41,9 @@ pub(crate) struct State {
     instance_buffer: wgpu::Buffer,
     rng: rand::rngs::ThreadRng,
     // particles: Option<HashMap<String, Box<dyn IsAtomic>>>,
-    spaceTime: SpaceTime<Atom<Elements>>,
+    spaceTime: SpaceTime<Atom<Elements, f64, Vec<f64>>, f64>,
     dimensions: u32,
-    integrator: Leapfrog,
+    integrator: Leapfrog<f64>,
     sin: ff::SIN<Elements>
 }
 
@@ -306,29 +306,42 @@ impl State {
         );
 
         let rng = rand::thread_rng();
-        let mut particles = HashMap::<String, Box<Atom<Elements>>>::new();
+        let mut particles = HashMap::<String, Atom<Elements, f64, Vec<f64>>>::new();
         let dimensions: u32 = 3;
 
-        let mut spaceTime = SpaceTime::<Atom<Elements>>::new();
+        let mut spaceTime = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
         // let's just make some atoms!
         // let's make them use some of the instance things.
         let sin = ff::SIN::<Elements> { description: "SIN".to_string(), particle_type: Vec::new() };
         
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
-        let mut priorAtom: String = "".to_string();
+        let mut allAtoms = Vec::<String>::new();
         for instance in &mut instances {
             let mut atom = sin.atom(ff::Elements::H(0));
             atom.generate_spatial_coordinates(3);
             instance.id = Some(atom.id.clone());
             let pos = vec!(instance.position.x.to_f64().unwrap(), instance.position.y.to_f64().unwrap(), instance.position.z.to_f64().unwrap());
             atom.set_position(pos);
-            if priorAtom != "".to_string() {
-                atom.neighbors = vec!(priorAtom);
-            }
-            priorAtom = atom.id.clone();
-            particles.insert(atom.id.clone(), Box::new(atom) as Box<Atom<Elements>>); // we clone/copy the string to avoid problems with lifetimes.
+            allAtoms.push(atom.id.clone());
+            particles.insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
         }
-        spaceTime.set_particles(Some(particles));
+        spaceTime.set_particles(particles);
+
+        // just make a big ol chain.
+        // for name in allAtoms.iter() {
+        //     match &mut spaceTime.get_mut_particles().as_mut() {
+        //         Some(world) => {
+        //             let particle = world.get_mut(name);
+        //             match particle {
+        //                 Some(a) => {
+        //                     a.set_neighbors(allAtoms.clone());
+        //                 }
+        //                 None => ()
+        //             }
+        //         }
+        //         None => ()
+        //     }
+        // }
 
         let integrator = Leapfrog::new();
 
@@ -363,7 +376,7 @@ impl State {
         }
     }
 
-    pub fn integrator(&mut self) -> &Leapfrog {
+    pub fn integrator(&mut self) -> &Leapfrog<f64> {
         &self.integrator
     }
 
@@ -393,33 +406,22 @@ impl State {
         // update the dynamics!  DO NOT WRITE DURING THIS TIME.
         // let newWorld: HashMap::<String, Box<dyn IsAtomic>> = HashMap::new();
         let mut accVec = HashMap::<String, Vec<f64>>::new();
-        match &self.spaceTime.get_particles() {
-            Some(world) => {
-                for (name, _) in world.iter() {
-                    accVec.insert(name.clone(), self.integrator.calculate_forces(name.clone(), &self.spaceTime, &self.sin));
-                }
-            }
-            None => ()
+        for (name, _) in self.spaceTime.get_particles() {
+            accVec.insert(name.clone(), self.integrator.calculate_forces(name.clone(), &self.spaceTime, &self.sin));
         }
 
         // NOW we want to write.  So we use a different method: get mut particles!
         for (atom, acc) in accVec.iter_mut() {
-            match &mut self.spaceTime.get_mut_particles().as_mut() {
-                Some(world) => {
-                    // accVec.insert(name.clone(), self.integrator.calculate_neighboring_forces(name.clone(), &self.spaceTime, &self.sin));
-                    let particle = world.get_mut(atom);
-                    match particle {
-                        Some(a) => {
-                            let (pos, vel, acc) = self.integrator.integrate(a, acc.to_vec());
-                            a.set_position(pos);
-                            a.set_velocity(vel);
-                            // a.set_acceleration(acc);
-                        }
-                        None => ()
-                    }
+            let particle = self.spaceTime.get_mut_particles().get_mut(atom);
+            match particle {
+                Some(a) => {
+                    let (pos, vel, acc) = self.integrator.integrate(a, acc.to_vec());
+                    a.set_position(pos);
+                    a.set_velocity(vel);
                 }
                 None => ()
             }
+            
         }
 
         // TODO MOVE TIME
@@ -437,16 +439,12 @@ impl State {
             let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
             let current = instance.rotation;
             instance.rotation = amount * current;
-            match &self.spaceTime.get_particles() {
-                Some(world) => {
-                    let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
-                    instance.position = instance.original_position;
-                    instance.position.x += atom_pos.get(0).unwrap().to_f32().unwrap()/1000.0;
-                    instance.position.y += atom_pos.get(1).unwrap().to_f32().unwrap()/1000.0;
-                    instance.position.z += atom_pos.get(2).unwrap().to_f32().unwrap()/1000.0;
-                }
-                None => ()
-            }
+            let world = &self.spaceTime.get_particles();
+            let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
+            instance.position = instance.original_position;
+            instance.position.x += atom_pos.get(0).unwrap().to_f32().unwrap()/1000.0;
+            instance.position.y += atom_pos.get(1).unwrap().to_f32().unwrap()/1000.0;
+            instance.position.z += atom_pos.get(2).unwrap().to_f32().unwrap()/1000.0;
         }
         let instance_data = self
             .instances
@@ -475,12 +473,12 @@ impl State {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
+                            r: 0.003,
+                            g: 0.804,
+                            b: 0.996,
+                            a: 1.00,
                         }),
-                        store: true,
+                        store: true, // 1, 205, 254, 0.25
                     },
                 })],
                 depth_stencil_attachment: None,

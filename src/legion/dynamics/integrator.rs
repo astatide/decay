@@ -1,4 +1,6 @@
 use cgmath::num_traits::{ToPrimitive};
+use num_traits::float::FloatCore;
+use num_traits::real::Real;
 use rand::Rng;
 use rand::prelude::Distribution;
 use uuid::Uuid;
@@ -6,32 +8,35 @@ use crate::legion::sin::ff::{ForceField, Elements};
 use crate::legion::topology::atom::IsAtomic;
 use crate::legion::topology::spaceTime::ContainsParticles;
 use crate::legion::topology::particle::HasPhysics;
+use num_traits::Float;
 
-pub fn distance<T: HasPhysics>(posA: &Box<T>, posB: &Box<T>) -> Vec<f64> {
-    let mut r: Vec<f64> = Vec::new();
-    let other_ijk = posB.get_position();
-    for (idim, dim) in posA.get_position().iter().enumerate() {
-        r.push(*dim - other_ijk[idim]);
+// The number has to support being subtracted!  See how we're doing it?
+pub fn distance<Par: HasPhysics<Vec<Num>>, Num: std::ops::Sub<Output = Num>>(A: &Par, B: &Par) -> Vec<Num> where Num: Copy {
+    let mut r: Vec<Num> = Vec::new();
+    let other_ijk = B.get_position();
+    let ijk = A.get_position();
+    for i in 0..ijk.len() {
+        r.push(ijk[i] - other_ijk[i]);
     }
     return r;
 }
 
-pub trait Integrator<T, U> {
-    fn integrate(&self, particle: &Box<T>, acc: Vec<f64>) -> (Vec<f64>, Vec<f64>, Vec<f64>);
-    fn calculate_forces(&self, name: String, world: &impl ContainsParticles<T>, sin: &impl ForceField<U>) -> Vec<f64>;
+pub trait Integrator<Par, Ele, Num, VecType> {
+    fn integrate(&self, particle: &Par, acc: VecType) -> (VecType, VecType, VecType);
+    fn calculate_forces(&self, name: String, world: &impl ContainsParticles<Par>, sin: &impl ForceField<Ele, Num, VecType>) -> VecType;
 }
 
 pub enum IntegratorTypes {
     LeapfrogVelocityVerlet
 }
 
-pub struct Leapfrog {
+pub struct Leapfrog<Num> {
     pub id: String,
     pub integrator_type: IntegratorTypes,
-    pub dt: f64
+    pub dt: Num
 }
 
-impl Leapfrog {
+impl Leapfrog<f64> {
     pub fn new() -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -41,8 +46,10 @@ impl Leapfrog {
     }
 }
 
-impl<T: IsAtomic<Elements>> Integrator<T, Elements> for Leapfrog {
-    fn integrate(&self, atom: &Box<T>, mut acc: Vec<f64>) -> (Vec<f64>, Vec<f64>, Vec<f64>){
+// We need to limit this to number types that have add!
+// Doing a lot of limits here, which makes some sense as this is a rather specific function
+impl<Par: IsAtomic<Elements, Vec<Num>>, Num> Integrator<Par, Elements, Num, Vec<Num>> for Leapfrog<Num> where Num: FloatCore + std::ops::AddAssign + std::ops::Mul<f64, Output = Num> + std::iter::Sum + rand::distributions::uniform::SampleUniform + Real {
+    fn integrate(&self, atom: &Par, mut acc: Vec<Num>) -> (Vec<Num>, Vec<Num>, Vec<Num>){
         let mut pos = atom.get_position().clone();
         let mut vel = atom.get_velocity().clone();
         let mut oAcc = atom.get_acceleration().clone();
@@ -50,53 +57,45 @@ impl<T: IsAtomic<Elements>> Integrator<T, Elements> for Leapfrog {
             acc[i] += oAcc[i];
         }
         for i in 0..pos.len() {
-            pos[i] += (vel[i]*self.dt) + (0.5*acc[i]*self.dt.powi(2));
+            pos[i] += (vel[i]*(self.dt)) + (acc[i]*(FloatCore::powi(self.dt, 2)*0.5));
         }
         for i in 0..vel.len() {
-            vel[i] += acc[i]*self.dt*0.5;
+            vel[i] += (acc[i]*self.dt) * 0.5;
         }
-        return (pos, vel, acc)
-        // atom.set_position(pos);
-        // atom.set_velocity(vel);
+        return (pos, vel, acc);
     }
+
     // this is _probably_ not the ideal way to like, do this, but I don't care at the moment lmao.
-    fn calculate_forces(&self, name: String, world: &impl ContainsParticles<T>, sin: &impl ForceField<Elements>) -> Vec<f64> {
-        let atoms = &world.get_particles();
+    fn calculate_forces(&self, name: String, world: &impl ContainsParticles<Par>, sin: &impl ForceField<Elements, Num, Vec<Num>>) -> Vec<Num> {
+        let atoms = world.get_particles();
         let mut rng = rand::thread_rng();
-        let sign: rand::distributions::Uniform<f32> = rand::distributions::Uniform::from(-1.0..1.1);
-        let applyJitter = true;
-        match atoms {
-            Some(atomWorld) => {
-                let atom = &atomWorld[&name];
-                let neighbors = atom.get_relevant_neighbors();
-                let mut force_sum: Vec<f64> = vec![0.0; atom.get_position().len()]; // use the vec macro to prefill with 0.
-                match neighbors {
-                    Some(neighborNames) => {
-                        for neighbor in neighborNames.iter() {
-                            // get the actual atom
-                            let na = &atomWorld[neighbor];
-                            let pwi = sin.pairwise_interactions(atom.get_element(), na.get_element());
-                            let d = distance(atom, na);
-                            let r = d.iter().map(|&z| z*z).sum::<f64>().sqrt(); // wait, did this work?  Huh!  Crazy nifty.
-                            let r_ijk = d.iter().map(|&z| z / r).collect::<Vec<f64>>(); // collect is what turns the iterator back in a vector, apparently.
-                            // Now!  Get the forces!
-                            let force = pwi(r as f32);
-                            for (i, z) in r_ijk.iter().enumerate() {
-                                force_sum[i] = force as f64 * *z; // cast back, etc.
-                            }
-                        }
-                    }
-                    None => ()
-                }
-                if applyJitter {
-                    for (_i, z) in force_sum.iter_mut().enumerate() {
-                        *z += rng.gen::<f64>()/100.0 * sign.sample(&mut rng).to_f64().unwrap();
-                    }
-                }
-                return force_sum;
+        // let sign: rand::distributions::Uniform<Num> = rand::distributions::Uniform::from(-1.0..1.1);
+        // let applyJitter = true;
+        let atom = &atoms[&name];
+        let neighbors = atom.get_neighbors();
+        let mut force_sum: Vec<Num> = vec![<Num as FloatCore>::min_positive_value(); atom.get_position().len()]; // use the vec macro to prefill with 0.
+
+        for neighbor in neighbors.iter() {
+            // get the actual atom
+            let na = &atoms[neighbor];
+            let pwi = sin.pairwise_interactions(atom.get_element(), na.get_element());
+            let d = distance(atom, na);
+            let r = FloatCore::abs(d.iter().map(|&z| z*z).sum::<Num>().sqrt()); // wait, did this work?  Huh!  Crazy nifty.
+            let r_ijk = d.iter().map(|&z| z / r).collect::<Vec<Num>>(); // collect is what turns the iterator back in a vector, apparently.
+            // Now!  Get the forces!
+            let force = pwi(r);
+            for (i, &z) in r_ijk.iter().enumerate() {
+                force_sum[i] = force * z; // cast back, etc.
             }
-            None => Vec::<f64>::new()
         }
+
+        // if applyJitter {
+        //     for (_i, z) in force_sum.iter_mut().enumerate() {
+        //         *z += (rng.gen_range(0.0..10000.0)/10.0).to_f64().unwrap() * sign.sample(&mut rng).to_f64().unwrap();
+        //     }
+        // }
+        return force_sum;
+            
     }
 }
 
