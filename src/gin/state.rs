@@ -314,6 +314,7 @@ impl State {
         // let's make them use some of the instance things.
         let sin = ff::SIN::<Elements> { description: "SIN".to_string(), particle_type: Vec::new() };
         
+        let mut priorAtom = "".to_string();
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
         let mut allAtoms = Vec::<String>::new();
         for instance in &mut instances {
@@ -322,6 +323,20 @@ impl State {
             instance.id = Some(atom.id.clone());
             let pos = vec!(instance.position.x.to_f64().unwrap(), instance.position.y.to_f64().unwrap(), instance.position.z.to_f64().unwrap());
             atom.set_position(pos);
+            let mut rng = rand::thread_rng();
+            let sign: rand::distributions::Uniform<f64> = rand::distributions::Uniform::from(-1.0..1.1);
+            let applyJitter = true;
+            if applyJitter {
+                let mut vel = vec![0.0; 3];
+                for i in 0..3 {
+                    vel[i] = (rng.gen_range(0.0..1000.0)) * sign.sample(&mut rng);
+                }
+                atom.set_velocity(vel);
+            }
+            if priorAtom != "".to_string() {
+                atom.neighbors.push(priorAtom.clone());
+            }
+            priorAtom = atom.id.clone();
             allAtoms.push(atom.id.clone());
             particles.insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
         }
@@ -329,15 +344,10 @@ impl State {
 
         // just make a big ol chain.
         // for name in allAtoms.iter() {
-        //     match &mut spaceTime.get_mut_particles().as_mut() {
-        //         Some(world) => {
-        //             let particle = world.get_mut(name);
-        //             match particle {
-        //                 Some(a) => {
-        //                     a.set_neighbors(allAtoms.clone());
-        //                 }
-        //                 None => ()
-        //             }
+        //     let particle = &mut spaceTime.get_mut_particles().get_mut(name);
+        //     match particle {
+        //         Some(a) => {
+        //             a.set_neighbors(allAtoms.clone());
         //         }
         //         None => ()
         //     }
@@ -418,6 +428,7 @@ impl State {
                     let (pos, vel, acc) = self.integrator.integrate(a, acc.to_vec());
                     a.set_position(pos);
                     a.set_velocity(vel);
+                    // a.set_acceleration(acc;)
                 }
                 None => ()
             }
@@ -439,12 +450,20 @@ impl State {
             let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
             let current = instance.rotation;
             instance.rotation = amount * current;
-            let world = &self.spaceTime.get_particles();
-            let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
+            let atom_pos = self.spaceTime.get_particles()
+            .get(&instance.id.clone().unwrap())
+            .unwrap()
+            .get_position();
+            // let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
             instance.position = instance.original_position;
-            instance.position.x += atom_pos.get(0).unwrap().to_f32().unwrap()/1000.0;
-            instance.position.y += atom_pos.get(1).unwrap().to_f32().unwrap()/1000.0;
-            instance.position.z += atom_pos.get(2).unwrap().to_f32().unwrap()/1000.0;
+            instance.position.x += atom_pos.get(0)
+            .unwrap()
+            .to_f32()
+            .unwrap();
+            
+            
+            instance.position.y += atom_pos.get(1).unwrap().to_f32().unwrap();
+            instance.position.z += atom_pos.get(2).unwrap().to_f32().unwrap();
         }
         let instance_data = self
             .instances
