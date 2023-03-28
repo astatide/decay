@@ -1,17 +1,25 @@
-use std::{collections::HashMap, ops::Deref, borrow::BorrowMut};
+use std::{borrow::BorrowMut, collections::HashMap, ops::Deref};
 
-use winit::{window::Window, event::{WindowEvent, KeyboardInput, ElementState, VirtualKeyCode}};
-use wgpu::util::DeviceExt;
-use log::{debug, error, log_enabled, info, Level};
-use cgmath::{prelude::*, num_traits::ToPrimitive};
-use rand::{Rng, prelude::Distribution};
-#[cfg(target_arch="wasm32")]
+use cgmath::{num_traits::ToPrimitive, prelude::*};
+use log::{debug, error, info, log_enabled, Level};
+use rand::{prelude::Distribution, Rng};
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+use wgpu::util::DeviceExt;
+use winit::{
+    event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
+    window::Window,
+};
 
+use crate::legion::{
+    dynamics::integrator::{Integrator, Leapfrog},
+    sin::ff::{self, Elements, ForceField},
+    topology::atom::{Atom, Connected, IsAtomic},
+    topology::particle::{self, HasPhysics, IsSpatial},
+    topology::spaceTime::{self, ContainsParticles, SpaceTime},
+};
 
-use crate::legion::{topology::particle::{HasPhysics, self, IsSpatial}, topology::atom::{Atom, IsAtomic}, dynamics::integrator::{Leapfrog, Integrator}, topology::spaceTime::{ContainsParticles, self, SpaceTime}, sin::ff::{self, ForceField, Elements}};
-
-use super::{camera, time, vertex, primitives, instance};
+use super::{camera, instance, primitives, time, vertex};
 
 const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 60.0;
 
@@ -26,7 +34,7 @@ pub(crate) struct State {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     num_vertices: u32,
-    index_buffer: wgpu::Buffer, 
+    index_buffer: wgpu::Buffer,
     num_indices: u32,
     camera: camera::Camera,
     camera_controller: camera::CameraController,
@@ -41,10 +49,10 @@ pub(crate) struct State {
     instance_buffer: wgpu::Buffer,
     rng: rand::rngs::ThreadRng,
     // particles: Option<HashMap<String, Box<dyn IsAtomic>>>,
-    spaceTime: SpaceTime<Atom<Elements>>,
+    spaceTime: SpaceTime<Atom<Elements, f64, Vec<f64>>, f64>,
     dimensions: u32,
-    integrator: Leapfrog,
-    sin: ff::SIN<Elements>
+    integrator: Leapfrog<f64>,
+    sin: ff::SIN<Elements>,
 }
 
 impl State {
@@ -65,34 +73,40 @@ impl State {
         // State owns the window so this should be safe.
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
 
-        let adapter = instance.request_adapter(
-            &wgpu::RequestAdapterOptions {
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
-            },
-        ).await.unwrap();
+            })
+            .await
+            .unwrap();
 
-        let (device, queue) = adapter.request_device(
-            &wgpu::DeviceDescriptor {
-                features: wgpu::Features::empty(),
-                // WebGL doesn't support all of wgpu's features, so if
-                // we're building for the web we'll have to disable some.
-                limits: if cfg!(target_arch = "wasm32") {
-                    wgpu::Limits::downlevel_webgl2_defaults()
-                } else {
-                    wgpu::Limits::default()
+        let (device, queue) = adapter
+            .request_device(
+                &wgpu::DeviceDescriptor {
+                    features: wgpu::Features::empty(),
+                    // WebGL doesn't support all of wgpu's features, so if
+                    // we're building for the web we'll have to disable some.
+                    limits: if cfg!(target_arch = "wasm32") {
+                        wgpu::Limits::downlevel_webgl2_defaults()
+                    } else {
+                        wgpu::Limits::default()
+                    },
+                    label: None,
                 },
-                label: None,
-            },
-            None, // Trace path
-        ).await.unwrap();
+                None, // Trace path
+            )
+            .await
+            .unwrap();
 
         let surface_caps = surface.get_capabilities(&adapter);
         // Shader code in this tutorial assumes an sRGB surface texture. Using a different
         // one will result all the colors coming out darker. If you want to support non
         // sRGB surfaces, you'll need to account for that when drawing to the frame.
-        let surface_format = surface_caps.formats.iter()
+        let surface_format = surface_caps
+            .formats
+            .iter()
             .copied()
             .filter(|f| f.describe().srgb)
             .next()
@@ -115,9 +129,9 @@ impl State {
         });
 
         // camera render stuff
-        let camera_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
@@ -126,15 +140,14 @@ impl State {
                         min_binding_size: None,
                     },
                     count: None,
-                }
-            ],
-            label: Some("camera_bind_group_layout"),
-        });
+                }],
+                label: Some("camera_bind_group_layout"),
+            });
 
         // camera render stuff
-        let time_bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
+        let time_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
                     ty: wgpu::BindingType::Buffer {
@@ -143,20 +156,16 @@ impl State {
                         min_binding_size: None,
                     },
                     count: None,
-                }
-            ],
-            label: Some("time_bind_group_layout"),
-        });
+                }],
+                label: Some("time_bind_group_layout"),
+            });
 
         let render_pipeline_layout =
-        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[
-                &camera_bind_group_layout,
-                &time_bind_group_layout,
-            ],
-            push_constant_ranges: &[],
-        });
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[&camera_bind_group_layout, &time_bind_group_layout],
+                push_constant_ranges: &[],
+            });
 
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
@@ -164,15 +173,14 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "vs_main", // 1.
-                buffers: &[
-                    vertex::Vertex::desc(),
-                    instance::InstanceRaw::desc()
-                ],
+                buffers: &[vertex::Vertex::desc(), instance::InstanceRaw::desc()],
             },
-            fragment: Some(wgpu::FragmentState { // 3.
+            fragment: Some(wgpu::FragmentState {
+                // 3.
                 module: &shader,
                 entry_point: "fs_main",
-                targets: &[Some(wgpu::ColorTargetState { // 4.
+                targets: &[Some(wgpu::ColorTargetState {
+                    // 4.
                     format: config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
@@ -192,27 +200,23 @@ impl State {
             },
             depth_stencil: None, // 1.
             multisample: wgpu::MultisampleState {
-                count: 1, // 2.
-                mask: !0, // 3.
+                count: 1,                         // 2.
+                mask: !0,                         // 3.
                 alpha_to_coverage_enabled: false, // 4.
             },
             multiview: None, // 5.
         });
 
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(primitives::VERTICES),
-                usage: wgpu::BufferUsages::VERTEX,
-            }
-        );
-        let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(primitives::INDICES),
-                usage: wgpu::BufferUsages::INDEX,
-            }
-        );
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(primitives::VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(primitives::INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
         let num_indices = primitives::INDICES.len() as u32;
         let num_vertices = primitives::VERTICES.len() as u32;
 
@@ -231,104 +235,144 @@ impl State {
         };
 
         let mut camera_uniform = camera::CameraUniform::new();
-            camera_uniform.update_view_proj(&camera);
+        camera_uniform.update_view_proj(&camera);
 
-        let camera_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[camera_uniform]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            }
-        );
+        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Buffer"),
+            contents: bytemuck::cast_slice(&[camera_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &camera_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: camera_buffer.as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
             label: Some("camera_bind_group"),
         });
 
         let camera_controller = camera::CameraController::new(0.2);
 
-        let time = [0.0,0.0,0.0,0.0];
+        let time = [0.0, 0.0, 0.0, 0.0];
 
         let mut time_uniform = time::TimeUniform::new();
-            time_uniform.update_time(time);
+        time_uniform.update_time(time);
 
-        let time_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Time Buffer"),
-                contents: bytemuck::cast_slice(&[time_uniform]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            }
-        );
+        let time_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Time Buffer"),
+            contents: bytemuck::cast_slice(&[time_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
 
         let time_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &time_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: time_buffer.as_entire_binding(),
-                }
-            ],
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: time_buffer.as_entire_binding(),
+            }],
             label: Some("time_bind_group"),
         });
 
-        let mut instances = (0..instance::NUM_INSTANCES_PER_ROW).flat_map(|z| {
-            (0..instance::NUM_INSTANCES_PER_ROW).map(move |x| {
-                let position = cgmath::Vector3 { x: x as f32, y: 0.0, z: z as f32 } - instance::INSTANCE_DISPLACEMENT;
-                let original_position = cgmath::Vector3 { x: x as f32, y: 0.0, z: z as f32 } - instance::INSTANCE_DISPLACEMENT;
+        let mut instances = (0..instance::NUM_INSTANCES_PER_ROW)
+            .flat_map(|z| {
+                (0..instance::NUM_INSTANCES_PER_ROW).map(move |x| {
+                    let position = cgmath::Vector3 {
+                        x: x as f32,
+                        y: 0.0,
+                        z: z as f32,
+                    } - instance::INSTANCE_DISPLACEMENT;
+                    let original_position = cgmath::Vector3 {
+                        x: x as f32,
+                        y: 0.0,
+                        z: z as f32,
+                    } - instance::INSTANCE_DISPLACEMENT;
 
-                let rotation = if position.is_zero() {
-                    // this is needed so an object at (0, 0, 0) won't get scaled to zero
-                    // as Quaternions can effect scale if they're not created correctly
-                    cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_z(), cgmath::Deg(0.0))
-                } else {
-                    cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-                };
+                    let rotation = if position.is_zero() {
+                        // this is needed so an object at (0, 0, 0) won't get scaled to zero
+                        // as Quaternions can effect scale if they're not created correctly
+                        cgmath::Quaternion::from_axis_angle(
+                            cgmath::Vector3::unit_z(),
+                            cgmath::Deg(0.0),
+                        )
+                    } else {
+                        cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
+                    };
 
-                instance::Instance {
-                    position, original_position, rotation, id: None
-                }
+                    instance::Instance {
+                        position,
+                        original_position,
+                        rotation,
+                        id: None,
+                    }
+                })
             })
-        }).collect::<Vec<_>>();
-        let instance_data = instances.iter().map(instance::Instance::to_raw).collect::<Vec<_>>();
-        let instance_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(&instance_data),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            }
-        );
+            .collect::<Vec<_>>();
+        let instance_data = instances
+            .iter()
+            .map(instance::Instance::to_raw)
+            .collect::<Vec<_>>();
+        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Instance Buffer"),
+            contents: bytemuck::cast_slice(&instance_data),
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        });
 
         let rng = rand::thread_rng();
-        let mut particles = HashMap::<String, Box<Atom<Elements>>>::new();
+        let mut particles = HashMap::<String, Atom<Elements, f64, Vec<f64>>>::new();
         let dimensions: u32 = 3;
 
-        let mut spaceTime = SpaceTime::<Atom<Elements>>::new();
+        let mut spaceTime = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
         // let's just make some atoms!
         // let's make them use some of the instance things.
-        let sin = ff::SIN::<Elements> { description: "SIN".to_string(), particle_type: Vec::new() };
-        
+        let sin = ff::SIN::<Elements> {
+            description: "SIN".to_string(),
+            particle_type: Vec::new(),
+        };
+
+        let mut priorAtom = "".to_string();
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
-        let mut priorAtom: String = "".to_string();
+        let mut allAtoms = Vec::<String>::new();
         for instance in &mut instances {
             let mut atom = sin.atom(ff::Elements::H(0));
             atom.generate_spatial_coordinates(3);
             instance.id = Some(atom.id.clone());
-            let pos = vec!(instance.position.x.to_f64().unwrap(), instance.position.y.to_f64().unwrap(), instance.position.z.to_f64().unwrap());
+            let pos = vec![
+                instance.position.x.to_f64().unwrap(),
+                instance.position.y.to_f64().unwrap(),
+                instance.position.z.to_f64().unwrap(),
+            ];
             atom.set_position(pos);
+            let mut rng = rand::thread_rng();
+            let sign: rand::distributions::Uniform<f64> =
+                rand::distributions::Uniform::from(-1.0..1.1);
+            let applyJitter = true;
+            if applyJitter {
+                let mut vel = vec![0.0; 3];
+                for i in 0..3 {
+                    vel[i] = (rng.gen_range(0.0..1000.0)/1000.0) * sign.sample(&mut rng);
+                }
+                atom.set_velocity(vel);
+            }
             if priorAtom != "".to_string() {
-                atom.neighbors = vec!(priorAtom);
+                atom.neighbors.push(priorAtom.clone());
             }
             priorAtom = atom.id.clone();
-            particles.insert(atom.id.clone(), Box::new(atom) as Box<Atom<Elements>>); // we clone/copy the string to avoid problems with lifetimes.
+            allAtoms.push(atom.id.clone());
+            particles.insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
         }
-        spaceTime.set_particles(Some(particles));
+        spaceTime.set_particles(particles);
+
+        // just make a big ol chain.
+        // for name in allAtoms.iter() {
+        //     let particle = &mut spaceTime.get_mut_particles().get_mut(name);
+        //     match particle {
+        //         Some(a) => {
+        //             a.set_neighbors(allAtoms.clone());
+        //         }
+        //         None => ()
+        //     }
+        // }
 
         let integrator = Leapfrog::new();
 
@@ -359,11 +403,11 @@ impl State {
             spaceTime,
             dimensions,
             integrator,
-            sin
+            sin,
         }
     }
 
-    pub fn integrator(&mut self) -> &Leapfrog {
+    pub fn integrator(&mut self) -> &Leapfrog<f64> {
         &self.integrator
     }
 
@@ -388,37 +432,34 @@ impl State {
     pub fn update(&mut self) {
         self.camera_controller.update_camera(&mut self.camera);
         self.camera_uniform.update_view_proj(&self.camera);
-        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_uniform]),
+        );
 
         // update the dynamics!  DO NOT WRITE DURING THIS TIME.
         // let newWorld: HashMap::<String, Box<dyn IsAtomic>> = HashMap::new();
         let mut accVec = HashMap::<String, Vec<f64>>::new();
-        match &self.spaceTime.get_particles() {
-            Some(world) => {
-                for (name, _) in world.iter() {
-                    accVec.insert(name.clone(), self.integrator.calculate_forces(name.clone(), &self.spaceTime, &self.sin));
-                }
-            }
-            None => ()
+        for (name, _) in self.spaceTime.get_particles() {
+            accVec.insert(
+                name.clone(),
+                self.integrator
+                    .calculate_forces(name.clone(), &self.spaceTime, &self.sin),
+            );
         }
 
         // NOW we want to write.  So we use a different method: get mut particles!
         for (atom, acc) in accVec.iter_mut() {
-            match &mut self.spaceTime.get_mut_particles().as_mut() {
-                Some(world) => {
-                    // accVec.insert(name.clone(), self.integrator.calculate_neighboring_forces(name.clone(), &self.spaceTime, &self.sin));
-                    let particle = world.get_mut(atom);
-                    match particle {
-                        Some(a) => {
-                            let (pos, vel, acc) = self.integrator.integrate(a, acc.to_vec());
-                            a.set_position(pos);
-                            a.set_velocity(vel);
-                            // a.set_acceleration(acc);
-                        }
-                        None => ()
-                    }
+            let particle = self.spaceTime.get_mut_particles().get_mut(atom);
+            match particle {
+                Some(a) => {
+                    let (pos, vel, acc) = self.integrator.integrate(a, acc.to_vec());
+                    a.set_position(pos);
+                    a.set_velocity(vel);
+                    // a.set_acceleration(acc;)
                 }
-                None => ()
+                None => (),
             }
         }
 
@@ -437,36 +478,42 @@ impl State {
             let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
             let current = instance.rotation;
             instance.rotation = amount * current;
-            match &self.spaceTime.get_particles() {
-                Some(world) => {
-                    let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
-                    instance.position = instance.original_position;
-                    instance.position.x += atom_pos.get(0).unwrap().to_f32().unwrap()/1000.0;
-                    instance.position.y += atom_pos.get(1).unwrap().to_f32().unwrap()/1000.0;
-                    instance.position.z += atom_pos.get(2).unwrap().to_f32().unwrap()/1000.0;
-                }
-                None => ()
-            }
+            let atom_pos = self
+                .spaceTime
+                .get_particles()
+                .get(&instance.id.clone().unwrap())
+                .unwrap()
+                .get_position();
+            // let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
+            instance.position = instance.original_position;
+            instance.position.x += atom_pos.get(0).unwrap().to_f32().unwrap();
+
+            instance.position.y += atom_pos.get(1).unwrap().to_f32().unwrap();
+            instance.position.z += atom_pos.get(2).unwrap().to_f32().unwrap();
         }
         let instance_data = self
             .instances
             .iter()
             .map(instance::Instance::to_raw)
             .collect::<Vec<_>>();
-    
+
         self.queue.write_buffer(
-                &self.instance_buffer,
-                0,
-                bytemuck::cast_slice(&instance_data),
-            );
+            &self.instance_buffer,
+            0,
+            bytemuck::cast_slice(&instance_data),
+        );
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Render Encoder"),
-        });
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Render Encoder"),
+            });
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -475,18 +522,18 @@ impl State {
                     resolve_target: None,
                     ops: wgpu::Operations {
                         load: wgpu::LoadOp::Clear(wgpu::Color {
-                            r: 0.1,
-                            g: 0.2,
-                            b: 0.3,
-                            a: 1.0,
+                            r: 0.003,
+                            g: 0.804,
+                            b: 0.996,
+                            a: 1.00,
                         }),
-                        store: true,
+                        store: true, // 1, 205, 254, 0.25
                     },
                 })],
                 depth_stencil_attachment: None,
             });
             render_pass.set_pipeline(&self.render_pipeline); // 2.
-            // render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+                                                             // render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
 
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
@@ -502,14 +549,14 @@ impl State {
             render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
 
             // render_pass.draw_indexed(0..self.num_indices, 0, 0..1); // 2.
-            
+
             // render_pass.draw(0..self.num_vertices, 0..1);
         }
-    
+
         // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
-    
+
         Ok(())
     }
 }

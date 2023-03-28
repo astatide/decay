@@ -1,4 +1,3 @@
-
-pub mod topology;
-pub mod sin;
 pub mod dynamics;
+pub mod sin;
+pub mod topology;

@@ -1,33 +1,33 @@
+use crate::legion::sin::ff::{Elements, ForceField};
 use std::collections::HashMap;
-use crate::legion::sin::ff::{ForceField, Elements};
 
 // #[derive(Debug)]
 
-pub trait ContainsParticles<T> {
-    fn get_particles(&self) -> Option<&HashMap<String, Box<T>>>;
-    fn get_mut_particles(&mut self) -> Option<&mut HashMap<String, Box<T>>>;
+pub trait ContainsParticles<ParT> {
+    fn get_particles(&self) -> &HashMap<String, ParT>;
+    fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT>;
 }
 // pub trait ContainsAtomicParticles {
 //     fn get_particles(&self) -> Option<&HashMap<String, Box<dyn IsAtomic>>>;
 //     fn get_mut_particles(&mut self) -> Option<&mut HashMap<String, Box<dyn IsAtomic>>>;
 // }
 
-pub struct SpaceTime<T> {
-    particles: Option<HashMap<String, Box<T>>>,
-    time: f64,
-    dimensions: u32
+pub struct SpaceTime<ParT, NumT> {
+    particles: HashMap<String, ParT>,
+    time: NumT,
+    dimensions: u32,
 }
 
-impl<T> SpaceTime<T> {
+impl<ParT> SpaceTime<ParT, f64> {
     pub fn new() -> Self {
         Self {
-            particles: None,
+            particles: HashMap::<String, ParT>::new(),
             time: 0.0,
             dimensions: 3,
         }
     }
 
-    pub fn set_particles(&mut self, particles: Option<HashMap<String, Box<T>>>) {
+    pub fn set_particles(&mut self, particles: HashMap<String, ParT>) {
         self.particles = particles;
     }
 
@@ -36,12 +36,12 @@ impl<T> SpaceTime<T> {
     // }
 }
 
-impl<T> ContainsParticles<T> for SpaceTime<T> {
-    fn get_mut_particles(&mut self) -> Option<&mut HashMap<String, Box<T>>> {
-        return self.particles.as_mut();
+impl<ParT, NumT> ContainsParticles<ParT> for SpaceTime<ParT, NumT> {
+    fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT> {
+        return &mut self.particles;
     }
-    fn get_particles(&self) -> Option<&HashMap<String, Box<T>>> {
-        return self.particles.as_ref();
+    fn get_particles(&self) -> &HashMap<String, ParT> {
+        return &self.particles;
     }
 }
 

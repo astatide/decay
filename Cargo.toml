@@ -25,9 +25,16 @@ wgpu = "0.15"
 cfg-if = "1"
 pollster = "0.3.0" # awaiting the future; simple
 bytemuck = { version = "1.13.1", features = [ "derive" ] }
-cgmath = "0.18" # linear algebra baby!
+cgmath = "0.18" # linear algebra baby!  For graphics mostly.
+nalgebra = "*" # non computer graphics linear algebra
 rand = "0.8.5"
+num = "0.4.0"
 # the other regular dependencies...
+
+[dependencies.num-traits]
+version = "0.2"
+default-features = false
+features = ["libm"]    # <--- Uncomment if you wish to use `Float` and `Real` without `std`
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.7"

@@ -1,93 +1,95 @@
-use std::collections::HashMap;
-use std::ops::Sub;
-use uuid::Uuid;
-use crate::legion::sin::ff::ForceField;
-use crate::legion::sin::ff::Elements;
 use super::particle::HasCharge;
 use super::particle::HasMass;
 use super::particle::HasPhysics;
 use super::particle::IsSpatial;
 use super::particle::Particle;
+use crate::legion::sin::ff::Elements;
+use crate::legion::sin::ff::ForceField;
+use cgmath::num_traits::ToPrimitive;
+use std::collections::HashMap;
+use std::ops::Sub;
+use uuid::Uuid;
 
-pub trait HasElement<T> {
-    fn get_element(&self) -> &T;
+pub trait HasElement<EleT> {
+    fn get_element(&self) -> &EleT;
 }
 
-pub trait Connected {
+pub trait Connected<VecT> {
     fn force(&self);
-    fn get_neighbors(&self) -> &Vec<String>;
-    // fn modify_bonded_list(&self, other: &impl Connected);
+    fn get_neighbors(&self) -> &VecT;
+    fn set_neighbors(&mut self, neighbors: VecT);
 }
 
-pub trait IsAtomic<T>: HasPhysics + HasElement<T> {}
+pub trait IsAtomic<EleT, VecT>:
+    HasPhysics<VecT> + HasElement<EleT> + Connected<Vec<String>>
+{
+}
 
 // needs to implement Connected, Charge, Bonded, HasPhysics, IsSpatial
 #[derive(Debug)]
-pub struct Atom<T> {
-    pub element: T,
+pub struct Atom<EleT, NumT, VecT> {
+    pub element: EleT,
     pub id: String,
     pub neighbors: Vec<String>,
-    pub mass: f32,
-    pub charge: f32,
-    pub position: Vec<f64>,
-    pub velocity: Vec<f64>,
-    pub acceleration: Vec<f64>
+    pub mass: NumT,
+    pub charge: NumT,
+    pub position: VecT,
+    pub velocity: VecT,
+    pub acceleration: VecT,
 }
 
-impl<T> Atom<T> {
-    pub fn new(element: T, ff: &impl ForceField<T>) -> Self {
+impl<EleT, NumT> Atom<EleT, NumT, Vec<NumT>> {
+    pub fn new(element: EleT, ff: &impl ForceField<EleT, NumT, Vec<NumT>>) -> Self {
         let mass = ff.mass(&element);
         let charge = ff.charge(&element);
 
         return Self {
             element: element,
             id: Uuid::new_v4().to_string(),
-            neighbors: Vec::new(),
+            neighbors: Vec::<String>::new(),
             mass: mass,
             charge: charge,
-            position: Vec::new(),
-            velocity: Vec::new(),
-            acceleration: Vec::new()
+            position: Vec::<NumT>::new(),
+            velocity: Vec::<NumT>::new(),
+            acceleration: Vec::<NumT>::new(),
         };
     }
 }
 
-impl<T> IsAtomic<T> for Atom<T> {}
+impl<EleT, NumT, VecT> IsAtomic<EleT, VecT> for Atom<EleT, NumT, VecT> {}
 
-impl<T> HasElement<T> for Atom<T> {
-    fn get_element(&self) -> &T {
+impl<EleT, NumT, VecT> HasElement<EleT> for Atom<EleT, NumT, VecT> {
+    fn get_element(&self) -> &EleT {
         return &self.element;
     }
 }
 
-impl<T> Connected for Atom<T> {
-    fn force(&self) {
-        
-    }
+impl<EleT, NumT, VecT> Connected<Vec<String>> for Atom<EleT, NumT, VecT> {
+    fn force(&self) {}
     fn get_neighbors(&self) -> &Vec<String> {
         return &self.neighbors;
     }
-    // fn modify_bonded_list(&self, other: &impl Connected) {
-        
-    // }
+    fn set_neighbors(&mut self, neighbors: Vec<String>) {
+        self.neighbors = neighbors;
+    }
 }
 
-impl<T> HasMass for Atom<T> {
-    fn set_mass(&mut self, mass: f32) {
+impl<EleT, NumT, VecT> HasMass<NumT> for Atom<EleT, NumT, VecT> {
+    fn set_mass(&mut self, mass: NumT) {
         self.mass = mass;
     }
 }
 
-impl<T> HasCharge for Atom<T> {
+impl<EleT, NumT, VecT> HasCharge<NumT> for Atom<EleT, NumT, VecT> {
     fn force(&self) {
-        
+        todo!()
     }
-    fn set_charge(&self, charge: f32) {
-
+    fn set_charge(&self, charge: NumT) {
+        todo!()
     }
 }
 
-impl<T> IsSpatial for Atom<T> {
+impl<EleT> IsSpatial for Atom<EleT, f64, Vec<f64>> {
     fn generate_spatial_coordinates(&mut self, nDim: u32) {
         self.position = vec![0.0; nDim.try_into().unwrap()];
         self.velocity = vec![0.0; nDim.try_into().unwrap()];
@@ -95,32 +97,29 @@ impl<T> IsSpatial for Atom<T> {
     }
 }
 
-impl<T> HasPhysics for Atom<T> {
-    fn get_position(&self) -> &Vec<f64> {
+impl<EleT, NumT, VecT> HasPhysics<VecT> for Atom<EleT, NumT, VecT> {
+    fn get_position(&self) -> &VecT {
         return &self.position;
     }
-    fn set_position(&mut self, pos: Vec<f64>) {
+    fn set_position(&mut self, pos: VecT) {
         self.position = pos;
     }
-    fn get_velocity(&self) -> &Vec<f64> {
+    fn get_velocity(&self) -> &VecT {
         return &self.velocity;
     }
-    fn set_velocity(&mut self, vel: Vec<f64>) {
+    fn set_velocity(&mut self, vel: VecT) {
         self.velocity = vel;
     }
-    fn get_acceleration(&self) -> &Vec<f64> {
+    fn get_acceleration(&self) -> &VecT {
         return &self.acceleration;
     }
-    fn set_acceleration(&mut self, acc: Vec<f64>) {
+    fn set_acceleration(&mut self, acc: VecT) {
         self.acceleration = acc;
-    }
-    fn get_relevant_neighbors(&self) -> Option<&Vec<String>> {
-        return Some(self.get_neighbors());
     }
 }
 
 // needs to implement Bondable
 struct Molecule {
     atoms: Vec<String>,
-    neighbors: HashMap<String, Vec<String>>
+    neighbors: HashMap<String, Vec<String>>,
 }
