@@ -350,7 +350,7 @@ impl State {
             if applyJitter {
                 let mut vel = vec![0.0; 3];
                 for i in 0..3 {
-                    vel[i] = (rng.gen_range(0.0..1000.0)) * sign.sample(&mut rng);
+                    vel[i] = (rng.gen_range(0.0..1000.0)/1000.0) * sign.sample(&mut rng);
                 }
                 atom.set_velocity(vel);
             }

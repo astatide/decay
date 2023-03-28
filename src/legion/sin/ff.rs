@@ -1,4 +1,4 @@
-use num_traits::Float;
+use num_traits::{float::FloatCore, real::Real};
 
 use crate::legion::topology::atom::Atom;
 
@@ -18,13 +18,20 @@ pub trait ForceField<EleT, NumT, VecT> {
     fn pairwise_interactions(&self, e1: &EleT, e2: &EleT) -> Box<dyn Fn(NumT) -> NumT>;
 }
 
-fn GenerateBasicPairwiseInteractions<NumT>(k: NumT, exp: NumT) -> Box<dyn Fn(NumT) -> NumT>
+fn GenerateBasicPairwiseInteractions<NumT>(k: NumT, l: NumT, exp: NumT) -> Box<dyn Fn(NumT) -> NumT>
 where
-    NumT: Float + 'static,
+    NumT: FloatCore + Real + 'static,
 {
     // we're creating a very simple, almost silly interaction: some coefficient divided by the pairwise distance.
     // Frankly, it's mostly for just testing.  Also, we need to move k into the closure to ensure the lifetime is respected.
-    return Box::new(move |r: NumT| -> NumT { k / (r.powf(exp)) });
+    return Box::new(move |r: NumT | -> NumT {
+        if r <= l {
+            return <NumT as Real>::min_value(); // fake out for getting too close to the atomic radius.
+        }
+        else {
+            return k / (r.powf(exp));
+        }
+    });
 }
 
 pub struct SIN<ParT> {
@@ -55,10 +62,10 @@ impl ForceField<Elements, f64, Vec<f64>> for SIN<Elements> {
     }
     fn pairwise_interactions(&self, e1: &Elements, e2: &Elements) -> Box<dyn Fn(f64) -> f64> {
         match e1 {
-            Elements::H(_) => GenerateBasicPairwiseInteractions(100.0, 2.0),
-            Elements::C(_) => GenerateBasicPairwiseInteractions(100.0, 2.0),
-            Elements::O(_) => GenerateBasicPairwiseInteractions(100.0, 2.0),
-            Elements::X(_) => GenerateBasicPairwiseInteractions(100.0, 2.0),
+            Elements::H(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
+            Elements::C(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
+            Elements::O(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
+            Elements::X(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
         }
     }
 }
