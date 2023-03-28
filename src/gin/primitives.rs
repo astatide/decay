@@ -9,13 +9,25 @@ use super::vertex;
 
 // Tetrahedron coordinates: (±1, 0, -1/√2), (0, ±1, 1/√2)
 
-const SF: f32 = 2.0; 
+const SF: f32 = 2.0;
 
 pub const VERTICES: &[vertex::Vertex] = &[
-    vertex::Vertex { position: [-0.5/SF, 0.0, -0.35355339/SF], color: [0.5, 0.0, 0.5] }, // A
-    vertex::Vertex { position: [0.5/SF, 0.0, -0.35355339/SF], color: [0.5, 0.0, 0.5] }, // B
-    vertex::Vertex { position: [0.0, -0.5/SF, 0.35355339/SF], color: [0.5, 0.0, 0.5] }, // C
-    vertex::Vertex { position: [0.0, 0.5/SF, 0.35355339/SF], color: [0.5, 0.0, 0.5] } // D
+    vertex::Vertex {
+        position: [-0.5 / SF, 0.0, -0.35355339 / SF],
+        color: [0.5, 0.0, 0.5],
+    }, // A
+    vertex::Vertex {
+        position: [0.5 / SF, 0.0, -0.35355339 / SF],
+        color: [0.5, 0.0, 0.5],
+    }, // B
+    vertex::Vertex {
+        position: [0.0, -0.5 / SF, 0.35355339 / SF],
+        color: [0.5, 0.0, 0.5],
+    }, // C
+    vertex::Vertex {
+        position: [0.0, 0.5 / SF, 0.35355339 / SF],
+        color: [0.5, 0.0, 0.5],
+    }, // D
 ];
 
 // FUCK!  Apparently order DOES matter.  WHAT?!

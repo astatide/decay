@@ -12,7 +12,7 @@ impl Vertex {
         //     array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
         //     step_mode: wgpu::VertexStepMode::Vertex,
         //     attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3],
-        // }        
+        // }
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
@@ -26,8 +26,8 @@ impl Vertex {
                     offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x3,
-                }
-            ]
+                },
+            ],
         }
     }
 }

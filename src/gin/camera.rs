@@ -1,5 +1,5 @@
 use log::info;
-use winit::event::{WindowEvent, KeyboardInput, ElementState, VirtualKeyCode};
+use winit::event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent};
 
 // CAMERA!  Aw yeah!
 pub struct Camera {
@@ -32,7 +32,7 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
     0.0, 0.0, 0.5, 0.0,
     0.0, 0.0, 0.5, 1.0,
 );
- 
+
 // We need this for Rust to store our data correctly for the shaders
 #[repr(C)]
 // This is so we can store this in a buffer
@@ -56,10 +56,9 @@ impl CameraUniform {
     }
 }
 
+// some quick and dirty stuff to control the camera
 
- // some quick and dirty stuff to control the camera
-
- pub struct CameraController {
+pub struct CameraController {
     speed: f32,
     is_forward_pressed: bool,
     is_backward_pressed: bool,
@@ -101,11 +100,12 @@ impl CameraController {
     pub fn process_events(&mut self, event: &WindowEvent) -> bool {
         match event {
             WindowEvent::KeyboardInput {
-                input: KeyboardInput {
-                    state,
-                    virtual_keycode: Some(keycode),
-                    ..
-                },
+                input:
+                    KeyboardInput {
+                        state,
+                        virtual_keycode: Some(keycode),
+                        ..
+                    },
                 ..
             } => {
                 let is_pressed = *state == ElementState::Pressed;
@@ -177,8 +177,8 @@ impl CameraController {
         let forward_mag = forward.magnitude();
 
         if self.is_rotate_right {
-            // Rescale the distance between the target and eye so 
-            // that it doesn't change. The eye therefore still 
+            // Rescale the distance between the target and eye so
+            // that it doesn't change. The eye therefore still
             // lies on the circle made by the target and eye.
             camera.eye = camera.target - (forward + right * self.speed).normalize() * forward_mag;
         }
@@ -186,14 +186,15 @@ impl CameraController {
             camera.eye = camera.target - (forward - right * self.speed).normalize() * forward_mag;
         }
         if self.is_rotate_up {
-            // Rescale the distance between the target and eye so 
-            // that it doesn't change. The eye therefore still 
+            // Rescale the distance between the target and eye so
+            // that it doesn't change. The eye therefore still
             // lies on the circle made by the target and eye.
-            camera.eye = camera.target - (forward + camera.up * self.speed).normalize() * forward_mag;
+            camera.eye =
+                camera.target - (forward + camera.up * self.speed).normalize() * forward_mag;
         }
         if self.is_rotate_down {
-            camera.eye = camera.target - (forward - camera.up * self.speed).normalize() * forward_mag;
+            camera.eye =
+                camera.target - (forward - camera.up * self.speed).normalize() * forward_mag;
         }
-
     }
 }

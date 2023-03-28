@@ -1,33 +1,33 @@
+use crate::legion::sin::ff::{Elements, ForceField};
 use std::collections::HashMap;
-use crate::legion::sin::ff::{ForceField, Elements};
 
 // #[derive(Debug)]
 
-pub trait ContainsParticles<Par> {
-    fn get_particles(&self) -> &HashMap<String, Par>;
-    fn get_mut_particles(&mut self) -> &mut HashMap<String, Par>;
+pub trait ContainsParticles<ParT> {
+    fn get_particles(&self) -> &HashMap<String, ParT>;
+    fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT>;
 }
 // pub trait ContainsAtomicParticles {
 //     fn get_particles(&self) -> Option<&HashMap<String, Box<dyn IsAtomic>>>;
 //     fn get_mut_particles(&mut self) -> Option<&mut HashMap<String, Box<dyn IsAtomic>>>;
 // }
 
-pub struct SpaceTime<Par, Num> {
-    particles: HashMap<String, Par>,
-    time: Num,
-    dimensions: u32
+pub struct SpaceTime<ParT, NumT> {
+    particles: HashMap<String, ParT>,
+    time: NumT,
+    dimensions: u32,
 }
 
-impl<Par> SpaceTime<Par, f64> {
+impl<ParT> SpaceTime<ParT, f64> {
     pub fn new() -> Self {
         Self {
-            particles: HashMap::<String, Par>::new(),
+            particles: HashMap::<String, ParT>::new(),
             time: 0.0,
             dimensions: 3,
         }
     }
 
-    pub fn set_particles(&mut self, particles: HashMap<String, Par>) {
+    pub fn set_particles(&mut self, particles: HashMap<String, ParT>) {
         self.particles = particles;
     }
 
@@ -36,11 +36,11 @@ impl<Par> SpaceTime<Par, f64> {
     // }
 }
 
-impl<Par, Num> ContainsParticles<Par> for SpaceTime<Par, Num> {
-    fn get_mut_particles(&mut self) -> &mut HashMap<String, Par> {
+impl<ParT, NumT> ContainsParticles<ParT> for SpaceTime<ParT, NumT> {
+    fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT> {
         return &mut self.particles;
     }
-    fn get_particles(&self) -> &HashMap<String, Par> {
+    fn get_particles(&self) -> &HashMap<String, ParT> {
         return &self.particles;
     }
 }
