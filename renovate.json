@@ -1,6 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "local>astatide/.github:renovate-config"
-  ]
+  "extends": ["config:base", ":dependencyDashboard"]
 }
