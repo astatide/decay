@@ -230,8 +230,6 @@ impl FromStr for CoordinateRecord {
     }
 }
 
-type Err = ();
-
 fn createModel(line: &str) -> CoordinateRecord {
     CoordinateRecordBuilder::new(CoordinateEnum::MODEL, line)
         .serial()
