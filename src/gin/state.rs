@@ -10,6 +10,7 @@ use winit::{
     event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
     window::Window,
 };
+use crate::gin::instance::Instance;
 
 use crate::legion::{
     dynamics::integrator::{Integrator, Leapfrog},
@@ -49,40 +50,114 @@ pub(crate) struct State {
     instance_buffer: wgpu::Buffer,
     rng: rand::rngs::ThreadRng,
     // particles: Option<HashMap<String, Box<dyn IsAtomic>>>,
-    spaceTime: SpaceTime<Atom<Elements, f64, Vec<f64>>, f64>,
+    space_time: SpaceTime<Atom<Elements, f64, Vec<f64>>, f64>,
     dimensions: u32,
     integrator: Leapfrog<f64>,
     sin: ff::SIN<Elements>,
 }
 
-impl State {
-    // Creating some of the wgpu types requires async code
-    pub async fn new(window: Window) -> Self {
-        let size = window.inner_size();
+pub(crate) struct StateBuilder<EleT, NumT, ParT, VecT: Iterator<Item=NumT>>
+ {
+    instance: Option<wgpu::Instance>,
+    surface: Option<wgpu::Surface>,
+    device: Option<wgpu::Device>,
+    queue: Option<wgpu::Queue>,
+    config: Option<wgpu::SurfaceConfiguration>,
+    size: Option<winit::dpi::PhysicalSize<u32>>,
+    window: Window,
+    render_pipeline: Option<wgpu::RenderPipeline>,
+    vertex_buffer: Option<wgpu::Buffer>,
+    num_vertices: Option<u32>,
+    index_buffer: Option<wgpu::Buffer>,
+    num_indices: Option<u32>,
+    camera: Option<camera::Camera>,
+    camera_controller: Option<camera::CameraController>,
+    camera_uniform: Option<camera::CameraUniform>,
+    camera_buffer: Option<wgpu::Buffer>,
+    camera_bind_group: Option<wgpu::BindGroup>,
+    time: Option<[f32; 4]>,
+    time_buffer: Option<wgpu::Buffer>,
+    time_bind_group: Option<wgpu::BindGroup>,
+    time_uniform: Option<time::TimeUniform>,
+    instances: Option<Vec<instance::Instance>>,
+    instance_buffer: Option<wgpu::Buffer>,
+    rng: Option<rand::rngs::ThreadRng>,
+    space_time: Option<SpaceTime<ParT<EleT, NumT, VecT>, NumT>>,
+    dimensions: Option<u32>,
+    integrator: Option<Leapfrog<NumT>>,
+    sin: Option<ff::SIN<EleT>>,
+}
 
+impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT, VecT> {
+    pub fn new(window: Window) -> Self {
+        Self {
+            instance: None,
+            surface: None,
+            device: None,
+            queue: None,
+            config: None,
+            size: None,
+            window,
+            render_pipeline: None,
+            vertex_buffer: None,
+            num_vertices: None,
+            index_buffer: None,
+            num_indices: None,
+            camera: None,
+            camera_controller: None,
+            camera_uniform: None,
+            camera_buffer: None,
+            camera_bind_group: None,
+            time: None,
+            time_buffer: None,
+            time_bind_group: None,
+            time_uniform: None,
+            instances: None,
+            instance_buffer: None,
+            rng: None,
+            space_time: None,
+            dimensions: None,
+            integrator: None,
+            sin: None,
+        }
+    }
+
+    pub fn size(mut self) -> Self {
+        self.size = Some(self.window.inner_size());
+        self
+    }
+
+    pub fn instance(mut self) -> Self {
         // The instance is a handle to our GPU
         // Backends::all => Vulkan + Metal + DX12 + Browser WebGPU
-        let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        self.instance = Some(wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: wgpu::Backends::all(),
             dx12_shader_compiler: Default::default(),
-        });
+        }));
+        self
+    }
 
+    pub fn surface(mut self) -> Self {
         // # Safety
-        //
         // The surface needs to live as long as the window that created it.
         // State owns the window so this should be safe.
-        let surface = unsafe { instance.create_surface(&window) }.unwrap();
+        self.surface = unsafe { self.instance.create_surface(&self.window) }.unwrap();
+        self
+    }
 
-        let adapter = instance
+    pub async fn adapter(mut self) -> Self {
+        self.adapter = self.instance
             .request_adapter(&wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::default(),
-                compatible_surface: Some(&surface),
+                compatible_surface: Some(&self.surface.unwrap()), // POSSIBLY UNSAFE; look again after re-organizing! TODO
                 force_fallback_adapter: false,
             })
-            .await
-            .unwrap();
+            .await;
+        self
+    }
 
-        let (device, queue) = adapter
+    pub async fn device_queue(mut self) -> Self {
+        let (device, queue) = self.adapter
             .request_device(
                 &wgpu::DeviceDescriptor {
                     features: wgpu::Features::empty(),
@@ -97,9 +172,13 @@ impl State {
                 },
                 None, // Trace path
             )
-            .await
-            .unwrap();
+            .await;
+        self.device = device;
+        self.queue = queue;
+        self
+    }
 
+    pub fn config(mut self) -> Self {
         let surface_caps = surface.get_capabilities(&adapter);
         // Shader code in this tutorial assumes an sRGB surface texture. Using a different
         // one will result all the colors coming out darker. If you want to support non
@@ -120,7 +199,12 @@ impl State {
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
         };
-        surface.configure(&device, &config);
+        surface.configure(&self.device, &config);
+        self.config = Some(config);
+        self
+    }
+
+    pub fn render_pipeline(mut self) -> Self {
 
         // load in the shaders!
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -207,19 +291,41 @@ impl State {
             multiview: None, // 5.
         });
 
+        self.render_pipeline = render_pipeline;
+        self
+    }
+
+    pub fn vertex_buffer(mut self) -> Self {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(primitives::VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
         });
+        self.vertex_buffer = vertex_buffer;
+        self
+    }
+
+    pub fn index_buffer(mut self) -> Self {
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(primitives::INDICES),
             usage: wgpu::BufferUsages::INDEX,
         });
-        let num_indices = primitives::INDICES.len() as u32;
-        let num_vertices = primitives::VERTICES.len() as u32;
+        self.index_buffer = index_buffer;
+        self
+    }
 
+    pub fn num_indices(mut self) -> Self {
+        self.num_indices = Some(primitives::INDICES.len() as u32);
+        self
+    }
+
+    pub fn num_vertices(mut self) -> Self {
+        self.num_vertices = Some(primitives::VERTICES.len() as u32);
+        self
+    }
+
+    pub fn camera(mut self) -> Self {
         let camera = camera::Camera {
             // position the camera one unit up and 2 units back
             // +z is out of the screen
@@ -233,16 +339,28 @@ impl State {
             znear: 0.1,
             zfar: 100.0,
         };
+        self.camera = Some(camera);
+        self
+    }
 
+    pub fn camera_uniform(mut self) -> Self {
         let mut camera_uniform = camera::CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
+        camera_uniform.update_view_proj(&self.camera.unwrap());
+        self.camera_uniform = Option(camera_uniform);
+        self
+    }
 
+    pub fn camera_buffer(mut self) -> Self {
         let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
             contents: bytemuck::cast_slice(&[camera_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
+        self.camera_buffer = camera_buffer;
+        self
+    }
 
+    pub fn camera_bind_group(mut self) -> Self {
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &camera_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
@@ -251,20 +369,38 @@ impl State {
             }],
             label: Some("camera_bind_group"),
         });
+        self.camera_bind_group = camera_bind_group;
+        self
+    }
 
-        let camera_controller = camera::CameraController::new(0.2);
+    pub fn camera_controller(mut self) -> Self {
+        self.camera_controller = Some(camera::CameraController::new(0.2));
+        self
+    }
 
-        let time = [0.0, 0.0, 0.0, 0.0];
+    pub fn time(mut self) -> Self {
+        self.time = Some([0.0, 0.0, 0.0, 0.0]);
+        self
+    }
 
+    pub fn time_uniform(mut self) -> Self {
         let mut time_uniform = time::TimeUniform::new();
-        time_uniform.update_time(time);
+        time_uniform.update_time(self.time.unwrap());
+        self.time_uniform = Some(time_uniform);
+        self
+    }
 
+    pub fn time_buffer(mut self) -> Self {
         let time_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Time Buffer"),
             contents: bytemuck::cast_slice(&[time_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
+        self.time_buffer = time_buffer;
+        self
+    }
 
+    pub fn time_bind_group(mut self) -> Self {
         let time_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &time_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
@@ -273,7 +409,11 @@ impl State {
             }],
             label: Some("time_bind_group"),
         });
+        self.time_bind_group = time_bind_group;
+        self
+    }
 
+    pub fn instances(mut self) -> Self {
         let mut instances = (0..instance::NUM_INSTANCES_PER_ROW)
             .flat_map(|z| {
                 (0..instance::NUM_INSTANCES_PER_ROW).map(move |x| {
@@ -308,6 +448,11 @@ impl State {
                 })
             })
             .collect::<Vec<_>>();
+        self.instances = Some(instances);
+        self
+    }
+
+    pub fn instance_buffer(mut self) -> Self {
         let instance_data = instances
             .iter()
             .map(instance::Instance::to_raw)
@@ -317,19 +462,44 @@ impl State {
             contents: bytemuck::cast_slice(&instance_data),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
+        self.instance_buffer = instance_buffer;
+        self
+    }
 
-        let rng = rand::thread_rng();
+    pub fn rng(mut self) -> Self {
+        self.rng = Some(rand::thread_rng()); // TODO: awful
+        self
+    }
+    pub fn particles(mut self) -> Self {
         let mut particles = HashMap::<String, Atom<Elements, f64, Vec<f64>>>::new();
-        let dimensions: u32 = 3;
+        self.particles = particles;
+        self
+    }
 
-        let mut spaceTime = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
+    pub fn dimensions(mut self) -> Self {
+        let dimensions: u32 = 3;
+        self.dimensions = Some(dimensions);
+        self
+    }
+
+    pub fn space_time(mut self) -> Self {
+        let mut space_time = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
+        self.space_time = Some(space_time);
+        self
+    }
+
+    pub fn sin(mut self) -> Self {
         // let's just make some atoms!
         // let's make them use some of the instance things.
         let sin = ff::SIN::<Elements> {
             description: "SIN".to_string(),
             particle_type: Vec::new(),
         };
+        self.sin = Some(sin);
+        self
+    }
 
+    pub fn space_time_set_particles(mut self) -> Self {
         let mut priorAtom = "".to_string();
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
         let mut allAtoms = Vec::<String>::new();
@@ -361,11 +531,10 @@ impl State {
             allAtoms.push(atom.id.clone());
             particles.insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
         }
-        spaceTime.set_particles(particles);
-
+        self.space_time.set_particles(particles);
         // just make a big ol chain.
         // for name in allAtoms.iter() {
-        //     let particle = &mut spaceTime.get_mut_particles().get_mut(name);
+        //     let particle = &mut space_time.get_mut_particles().get_mut(name);
         //     match particle {
         //         Some(a) => {
         //             a.set_neighbors(allAtoms.clone());
@@ -373,39 +542,49 @@ impl State {
         //         None => ()
         //     }
         // }
+        self
+    }
 
+    pub fn integrator(mut self) -> Self {
         let integrator = Leapfrog::new();
+        self.integrator = Some(integrator);
+        self
+    }
 
-        Self {
-            window,
-            surface,
-            device,
-            queue,
-            config,
-            size,
-            render_pipeline,
-            vertex_buffer,
-            num_vertices,
-            index_buffer,
-            num_indices,
-            camera,
-            camera_controller,
-            camera_uniform,
-            camera_buffer,
-            camera_bind_group,
-            time,
-            time_buffer,
-            time_bind_group,
-            time_uniform,
-            instances,
-            instance_buffer,
-            rng,
-            spaceTime,
-            dimensions,
-            integrator,
-            sin,
+    pub fn build(self) -> State {
+        State {
+            window: self.window,
+            surface: self.surface.unwrap(),
+            device: self.device.unwrap(),
+            queue: self.queue.unwrap(),
+            config: self.config.unwrap(),
+            size: self.size.unwrap(),
+            render_pipeline: self.render_pipeline.unwrap(),
+            vertex_buffer: self.vertex_buffer.unwrap(),
+            num_vertices: self.num_vertices.unwrap(),
+            index_buffer: self.index_buffer.unwrap(),
+            num_indices: self.num_indices.unwrap(),
+            camera: self.camera.unwrap(),
+            camera_controller: self.camera_controller.unwrap(),
+            camera_uniform: self.camera_uniform.unwrap(),
+            camera_buffer: self.camera_buffer.unwrap(),
+            camera_bind_group: self.camera_bind_group.unwrap(),
+            time: self.time.unwrap(),
+            time_buffer: self.time_buffer.unwrap(),
+            time_bind_group: self.time_bind_group.unwrap(),
+            time_uniform: self.time_uniform.unwrap(),
+            instances: self.instances.unwrap(),
+            instance_buffer: self.instance_buffer.unwrap(),
+            rng: self.rng.unwrap(),
+            space_time: self.space_time.unwrap(),
+            dimensions: self.dimensions.unwrap(),
+            integrator: self.integrator.unwrap(),
+            sin: self.sin.unwrap(),
         }
     }
+}
+
+impl State {
 
     pub fn integrator(&mut self) -> &Leapfrog<f64> {
         &self.integrator
@@ -441,17 +620,17 @@ impl State {
         // update the dynamics!  DO NOT WRITE DURING THIS TIME.
         // let newWorld: HashMap::<String, Box<dyn IsAtomic>> = HashMap::new();
         let mut accVec = HashMap::<String, Vec<f64>>::new();
-        for (name, _) in self.spaceTime.get_particles() {
+        for (name, _) in self.space_time.get_particles() {
             accVec.insert(
                 name.clone(),
                 self.integrator
-                    .calculate_forces(name.clone(), &self.spaceTime, &self.sin),
+                    .calculate_forces(name.clone(), &self.space_time, &self.sin),
             );
         }
 
         // NOW we want to write.  So we use a different method: get mut particles!
         for (atom, acc) in accVec.iter_mut() {
-            let particle = self.spaceTime.get_mut_particles().get_mut(atom);
+            let particle = self.space_time.get_mut_particles().get_mut(atom);
             match particle {
                 Some(a) => {
                     let (pos, vel, acc) = self.integrator.integrate(a, acc.to_vec());
@@ -479,7 +658,7 @@ impl State {
             let current = instance.rotation;
             instance.rotation = amount * current;
             let atom_pos = self
-                .spaceTime
+                .space_time
                 .get_particles()
                 .get(&instance.id.clone().unwrap())
                 .unwrap()
