@@ -27,7 +27,7 @@ where
     return r;
 }
 
-pub trait Integrator<ParT, EleT, NumT, VecT> {
+pub trait Integrator<ParT, EleT, NumT, VecT: IntoIterator<Item=NumT>> {
     fn integrate(&self, particle: &ParT, acc: VecT) -> (VecT, VecT, VecT);
     fn calculate_forces(
         &self,
@@ -61,7 +61,7 @@ impl Leapfrog<f64> {
 // this is KIND of a specific implementation, but also not really.  Trying to make it as generic as possible, although I'm not sure this is the way, so to speak.
 // We need to limit this to number types that have add!
 // Doing a lot of limits here, which makes some sense as this is a rather specific function
-impl<ParT: IsAtomic<Elements, Vec<NumT>>, NumT> Integrator<ParT, Elements, NumT, Vec<NumT>>
+impl<ParT: IsAtomic<Elements, NumT, Vec<NumT>>, NumT> Integrator<ParT, Elements, NumT, Vec<NumT>>
     for Leapfrog<NumT>
 where
     NumT: FloatCore

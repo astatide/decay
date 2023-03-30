@@ -56,8 +56,7 @@ pub(crate) struct State {
     sin: ff::SIN<Elements>,
 }
 
-pub(crate) struct StateBuilder<EleT, NumT, ParT, VecT: Iterator<Item=NumT>>
- {
+pub(crate) struct StateBuilder<EleT, NumT, ParT> where ParT: IsAtomic<EleT, NumT, VecT> where VecT: IntoIterator<Item=NumT> {
     instance: Option<wgpu::Instance>,
     surface: Option<wgpu::Surface>,
     device: Option<wgpu::Device>,
@@ -82,13 +81,13 @@ pub(crate) struct StateBuilder<EleT, NumT, ParT, VecT: Iterator<Item=NumT>>
     instances: Option<Vec<instance::Instance>>,
     instance_buffer: Option<wgpu::Buffer>,
     rng: Option<rand::rngs::ThreadRng>,
-    space_time: Option<SpaceTime<ParT<EleT, NumT, VecT>, NumT>>,
+    space_time: Option<SpaceTime<ParT, NumT>>,
     dimensions: Option<u32>,
     integrator: Option<Leapfrog<NumT>>,
     sin: Option<ff::SIN<EleT>>,
 }
 
-impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT, VecT> {
+impl<EleT, NumT, ParT> StateBuilder<EleT, NumT, ParT> where ParT: IsAtomic<EleT, NumT, VecT> where VecT: IntoIterator<Item=NumT> {
     pub fn new(window: Window) -> Self {
         Self {
             instance: None,
@@ -179,7 +178,7 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     }
 
     pub fn config(mut self) -> Self {
-        let surface_caps = surface.get_capabilities(&adapter);
+        let surface_caps = self.surface.get_capabilities(&self.adapter);
         // Shader code in this tutorial assumes an sRGB surface texture. Using a different
         // one will result all the colors coming out darker. If you want to support non
         // sRGB surfaces, you'll need to account for that when drawing to the frame.
@@ -193,13 +192,13 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
-            width: size.width,
-            height: size.height,
+            width: self.size.width,
+            height: self.size.height,
             present_mode: surface_caps.present_modes[0],
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
         };
-        surface.configure(&self.device, &config);
+        self.surface.configure(&self.device, &config);
         self.config = Some(config);
         self
     }
@@ -207,14 +206,14 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     pub fn render_pipeline(mut self) -> Self {
 
         // load in the shaders!
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Shader"),
             source: wgpu::ShaderSource::Wgsl(include_str!("../shaders/shader.wgsl").into()),
         });
 
         // camera render stuff
         let camera_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
@@ -230,7 +229,7 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
 
         // camera render stuff
         let time_bind_group_layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            self.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     visibility: wgpu::ShaderStages::VERTEX,
@@ -245,13 +244,13 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
             });
 
         let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            self.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
                 bind_group_layouts: &[&camera_bind_group_layout, &time_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        let render_pipeline = self.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
             vertex: wgpu::VertexState {
@@ -265,7 +264,7 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
                 entry_point: "fs_main",
                 targets: &[Some(wgpu::ColorTargetState {
                     // 4.
-                    format: config.format,
+                    format: self.config.format,
                     blend: Some(wgpu::BlendState::REPLACE),
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
@@ -296,7 +295,7 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     }
 
     pub fn vertex_buffer(mut self) -> Self {
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Vertex Buffer"),
             contents: bytemuck::cast_slice(primitives::VERTICES),
             usage: wgpu::BufferUsages::VERTEX,
@@ -306,7 +305,7 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     }
 
     pub fn index_buffer(mut self) -> Self {
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let index_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Index Buffer"),
             contents: bytemuck::cast_slice(primitives::INDICES),
             usage: wgpu::BufferUsages::INDEX,
@@ -334,7 +333,7 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
             target: (0.0, 0.0, 0.0).into(),
             // which way is "up"
             up: cgmath::Vector3::unit_y(),
-            aspect: config.width as f32 / config.height as f32,
+            aspect: self.config.width as f32 / self.config.height as f32,
             fovy: 45.0,
             znear: 0.1,
             zfar: 100.0,
@@ -346,14 +345,14 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     pub fn camera_uniform(mut self) -> Self {
         let mut camera_uniform = camera::CameraUniform::new();
         camera_uniform.update_view_proj(&self.camera.unwrap());
-        self.camera_uniform = Option(camera_uniform);
+        self.camera_uniform = Some(camera_uniform);
         self
     }
 
     pub fn camera_buffer(mut self) -> Self {
-        let camera_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let camera_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Camera Buffer"),
-            contents: bytemuck::cast_slice(&[camera_uniform]),
+            contents: bytemuck::cast_slice(&[self.camera_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         self.camera_buffer = camera_buffer;
@@ -361,11 +360,11 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     }
 
     pub fn camera_bind_group(mut self) -> Self {
-        let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &camera_bind_group_layout,
+        let camera_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.camera_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: camera_buffer.as_entire_binding(),
+                resource: self.camera_buffer.as_entire_binding(),
             }],
             label: Some("camera_bind_group"),
         });
@@ -391,9 +390,9 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     }
 
     pub fn time_buffer(mut self) -> Self {
-        let time_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let time_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Time Buffer"),
-            contents: bytemuck::cast_slice(&[time_uniform]),
+            contents: bytemuck::cast_slice(&[self.time_uniform]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         self.time_buffer = time_buffer;
@@ -401,11 +400,11 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     }
 
     pub fn time_bind_group(mut self) -> Self {
-        let time_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &time_bind_group_layout,
+        let time_bind_group = self.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &self.time_bind_group_layout,
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
-                resource: time_buffer.as_entire_binding(),
+                resource: self.time_buffer.as_entire_binding(),
             }],
             label: Some("time_bind_group"),
         });
@@ -453,11 +452,11 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
     }
 
     pub fn instance_buffer(mut self) -> Self {
-        let instance_data = instances
+        let instance_data = self.instances
             .iter()
             .map(instance::Instance::to_raw)
             .collect::<Vec<_>>();
-        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("Instance Buffer"),
             contents: bytemuck::cast_slice(&instance_data),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -503,8 +502,8 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
         let mut priorAtom = "".to_string();
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
         let mut allAtoms = Vec::<String>::new();
-        for instance in &mut instances {
-            let mut atom = sin.atom(ff::Elements::H(0));
+        for instance in &mut self.instances {
+            let mut atom = self.sin.atom(ff::Elements::H(0));
             atom.generate_spatial_coordinates(3);
             instance.id = Some(atom.id.clone());
             let pos = vec![
@@ -529,9 +528,9 @@ impl<EleT, NumT, ParT, VecT: Iterator<Item=NumT>> StateBuilder<EleT, NumT, ParT,
             }
             priorAtom = atom.id.clone();
             allAtoms.push(atom.id.clone());
-            particles.insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
+            self.particles.insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
         }
-        self.space_time.set_particles(particles);
+        self.space_time.set_particles(self.particles);
         // just make a big ol chain.
         // for name in allAtoms.iter() {
         //     let particle = &mut space_time.get_mut_particles().get_mut(name);
