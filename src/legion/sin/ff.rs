@@ -1,6 +1,6 @@
-use num_traits::{float::FloatCore, real::Real};
+use num_traits::{float::FloatCore, real::Real, Float};
 
-use crate::legion::topology::atom::Atom;
+use crate::legion::topology::atom::{Atom, AtomBuilder};
 
 // it's useful to include the mass
 #[derive(Debug)]
@@ -11,7 +11,7 @@ pub enum Elements {
     X(u32),
 }
 
-pub trait ForceField<EleT, NumT, VecT: IntoIterator<Item=NumT>> {
+pub trait ForceField<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> {
     fn mass(&self, element: &EleT) -> NumT;
     fn charge(&self, element: &EleT) -> NumT;
     fn atom(&self, element: EleT) -> Atom<EleT, NumT, VecT>;
@@ -39,10 +39,15 @@ pub struct SIN<ParT> {
     pub particle_type: Vec<ParT>,
 }
 
+
 // very specific implementation!  Using elements, 64 bit floats, and the built in Vec type.
 impl ForceField<Elements, f64, Vec<f64>> for SIN<Elements> {
     fn atom(&self, element: Elements) -> Atom<Elements, f64, Vec<f64>> {
-        Atom::new(element, self)
+        AtomBuilder::new()
+        .element(element)
+        .charge(self.charge(&element))
+        .mass(self.mass(&element))
+        .build()
     }
     fn mass(&self, element: &Elements) -> f64 {
         match element {

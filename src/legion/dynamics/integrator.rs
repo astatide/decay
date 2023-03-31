@@ -5,7 +5,7 @@ use crate::legion::topology::spaceTime::ContainsParticles;
 use cgmath::num_traits::ToPrimitive;
 use num_traits::float::FloatCore;
 use num_traits::real::Real;
-use num_traits::Float;
+use num_traits::{Float, Zero};
 use rand::prelude::Distribution;
 use rand::Rng;
 use uuid::Uuid;
@@ -27,7 +27,7 @@ where
     return r;
 }
 
-pub trait Integrator<ParT, EleT, NumT, VecT: IntoIterator<Item=NumT>> {
+pub trait Integrator<ParT, EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> {
     fn integrate(&self, particle: &ParT, acc: VecT) -> (VecT, VecT, VecT);
     fn calculate_forces(
         &self,
@@ -41,19 +41,22 @@ pub enum IntegratorTypes {
     LeapfrogVelocityVerlet,
 }
 
-pub struct Leapfrog<NumT> {
+pub struct Leapfrog<NumT: Float> {
     pub id: String,
     pub integrator_type: IntegratorTypes,
     pub dt: NumT,
 }
 
 // specific implementation blah blah
-impl Leapfrog<f64> {
+impl<NumT> Leapfrog<NumT>
+where
+    NumT: Float
+{
     pub fn new() -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
             integrator_type: IntegratorTypes::LeapfrogVelocityVerlet,
-            dt: 0.002,
+            dt: Zero::zero(), // Should be 0.002 but hey.
         }
     }
 }
@@ -69,7 +72,8 @@ where
         + std::ops::Mul<f64, Output = NumT>
         + std::iter::Sum
         + rand::distributions::uniform::SampleUniform
-        + Real,
+        + Real
+        + Float
 {
     fn integrate(&self, atom: &ParT, mut acc: Vec<NumT>) -> (Vec<NumT>, Vec<NumT>, Vec<NumT>) {
         let mut pos = atom.get_position().clone();
@@ -108,7 +112,7 @@ where
             let na = &atoms[neighbor];
             let pwi = sin.pairwise_interactions(atom.get_element(), na.get_element());
             let d = distance(atom, na);
-            let r = FloatCore::abs(d.iter().map(|&z| z * z).sum::<NumT>().sqrt()); // wait, did this work?  Huh!  Crazy nifty.
+            let r = FloatCore::abs(num_traits::Float::sqrt(d.iter().map(|&z| z * z).sum::<NumT>())); // wait, did this work?  Huh!  Crazy nifty.
             let r_ijk = d.iter().map(|&z| z / r).collect::<Vec<NumT>>(); // collect is what turns the iterator back in a vector, apparently.
                                                                         // Now!  Get the forces!
             let force = pwi(r);
