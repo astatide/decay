@@ -89,9 +89,11 @@ where
     camera_uniform: Option<camera::CameraUniform>,
     camera_buffer: Option<wgpu::Buffer>,
     camera_bind_group: Option<wgpu::BindGroup>,
+    camera_bind_group_layout: Option<wgpu::BindGroupLayout>,
     time: Option<[f32; 4]>,
     time_buffer: Option<wgpu::Buffer>,
     time_bind_group: Option<wgpu::BindGroup>,
+    time_bind_group_layout: Option<wgpu::BindGroupLayout>,
     time_uniform: Option<time::TimeUniform>,
     instances: Option<Vec<instance::Instance>>,
     instance_buffer: Option<wgpu::Buffer>,
@@ -129,9 +131,11 @@ where
             camera_uniform: None,
             camera_buffer: None,
             camera_bind_group: None,
+            camera_bind_group_layout: None,
             time: None,
             time_buffer: None,
             time_bind_group: None,
+            time_bind_group_layout: None,
             time_uniform: None,
             instances: None,
             instance_buffer: None,
@@ -332,6 +336,8 @@ where
             });
 
         self.render_pipeline = Some(render_pipeline);
+        self.time_bind_group_layout = Some(time_bind_group_layout);
+        self.camera_bind_group_layout = Some(camera_bind_group_layout);
         self
     }
 
@@ -454,7 +460,7 @@ where
 
     pub fn time_bind_group(mut self) -> Self {
         let time_bind_group = self.device.as_ref().unwrap().create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.time_bind_group_layout,
+            layout: &self.time_bind_group_layout.as_ref().unwrap(),
             entries: &[wgpu::BindGroupEntry {
                 binding: 0,
                 resource: self.time_buffer.as_ref().unwrap().as_entire_binding(),
@@ -561,7 +567,7 @@ where
         let mut priorAtom = "".to_string();
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
         let mut allAtoms = Vec::<String>::new();
-        for instance in &mut self.instances.as_ref().iter() {
+        for instance in &mut self.instances.unwrap() {
             let mut atom = self.sin.as_ref().unwrap().atom(ff::Elements::H(0));
             atom.generate_spatial_coordinates(3);
             instance.id = Some(atom.id.clone());
