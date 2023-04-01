@@ -21,7 +21,7 @@ static mut WIDTH: u32 = 200;
 // static mut STATE: &State;
 #[cfg_attr(target_arch="wasm32", wasm_bindgen)]
 pub struct DecayExport {
-    state: State<Elements, f32, Atom<Elements, f32, Vec<f32>>, Vec<f32>>,
+    state: State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>,
 }
 
 impl DecayExport {
@@ -58,7 +58,7 @@ impl DecayExport {
     
         // Adding in the state!
         // let state = State::new(window).await;
-        let state = StateBuilder::<Elements, f32, Atom<Elements, f32, Vec<f32>>>::new(window)
+        let state = StateBuilder::<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>::new(window)
             .size()
             .instance()
             .surface()
@@ -86,7 +86,7 @@ impl DecayExport {
             .dimensions()
             .space_time()
             .sin()
-            .space_time_set_particles()
+            .space_time_set_particles(Elements::H((0)))
             .integrator()
             .build();
 

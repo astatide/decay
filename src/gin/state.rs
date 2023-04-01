@@ -409,7 +409,7 @@ where
             .as_ref().unwrap()
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[self.camera_uniform.as_ref().unwrap()]),
+                contents: bytemuck::cast_slice(&[self.camera_uniform.unwrap()]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
         self.camera_buffer = Some(camera_buffer);
@@ -452,7 +452,7 @@ where
             .as_ref().unwrap()
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Time Buffer"),
-                contents: bytemuck::cast_slice(&[self.time_uniform.as_ref().unwrap()]),
+                contents: bytemuck::cast_slice(&[self.time_uniform.unwrap()]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
         self.time_buffer = Some(time_buffer);
@@ -565,49 +565,40 @@ where
     }
 
     pub fn space_time_set_particles(mut self, element: EleT) -> Self {
-        let mut priorAtom = "".to_string();
-        // Add in an atom for each triangle!  Fake a bond, make it work designers!
-        let mut allAtoms = Vec::<String>::new();
-        for instance in &mut self.instances.unwrap() {
-            let mut atom: &ParT = self.sin.as_ref().unwrap().generate_particle(element);
-            atom.generate_spatial_coordinates(3);
-            instance.id = Some(atom.get_id().clone());
-            let pos = vec![
-                instance.position.x.to_f64().unwrap(),
-                instance.position.y.to_f64().unwrap(),
-                instance.position.z.to_f64().unwrap(),
-            ];
-            atom.set_position(pos);
-            let mut rng = rand::thread_rng();
-            let sign: rand::distributions::Uniform<f64> =
-                rand::distributions::Uniform::from(-1.0..1.1);
-            let applyJitter = true;
-            if applyJitter {
-                let mut vel = vec![0.0; 3];
-                for i in 0..3 {
-                    vel[i] = (rng.gen_range(0.0..1000.0) / 1000.0) * sign.sample(&mut rng);
-                }
-                atom.set_velocity(vel);
-            }
-            if priorAtom != "".to_string() {
-                atom.neighbors.push(priorAtom.clone());
-            }
-            priorAtom = atom.id.clone();
-            allAtoms.push(atom.id.clone());
-            self.particles.as_ref().unwrap().insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
-        }
-        self.space_time.as_ref().unwrap().set_particles(self.particles.unwrap());
-        // just make a big ol chain.
-        // for name in allAtoms.iter() {
-        //     let particle = &mut space_time.get_mut_particles().get_mut(name);
-        //     match particle {
-        //         Some(a) => {
-        //             a.set_neighbors(allAtoms.clone());
+        todo!()
+        // let mut priorAtom = "".to_string();
+        // // Add in an atom for each triangle!  Fake a bond, make it work designers!
+        // let mut allAtoms = Vec::<String>::new();
+        // for instance in &mut self.instances.unwrap() {
+        //     let mut atom: &ParT = self.sin.as_ref().unwrap().generate_particle(element);
+        //     atom.generate_spatial_coordinates(3);
+        //     instance.id = Some(atom.get_id().clone());
+        //     let pos = vec![
+        //         instance.position.x.to_f64().unwrap(),
+        //         instance.position.y.to_f64().unwrap(),
+        //         instance.position.z.to_f64().unwrap(),
+        //     ];
+        //     atom.set_position(pos);
+        //     let mut rng = rand::thread_rng();
+        //     let sign: rand::distributions::Uniform<f64> =
+        //         rand::distributions::Uniform::from(-1.0..1.1);
+        //     let applyJitter = true;
+        //     if applyJitter {
+        //         let mut vel = vec![0.0; 3];
+        //         for i in 0..3 {
+        //             vel[i] = (rng.gen_range(0.0..1000.0) / 1000.0) * sign.sample(&mut rng);
         //         }
-        //         None => ()
+        //         atom.set_velocity(vel);
         //     }
+        //     if priorAtom != "".to_string() {
+        //         atom.neighbors.push(priorAtom.clone());
+        //     }
+        //     priorAtom = atom.id.clone();
+        //     allAtoms.push(atom.id.clone());
+        //     self.particles.as_ref().unwrap().insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
         // }
-        self
+        // self.space_time.as_ref().unwrap().set_particles(self.particles.unwrap());
+        // self
     }
 
     pub fn integrator(mut self) -> Self {
@@ -650,13 +641,15 @@ where
     }
 }
 
-impl<EleT, NumT, ParT, VecT> State<EleT, NumT, ParT, VecT> 
-where
-    ParT: IsAtomic<EleT, NumT, VecT>,
-    VecT: IntoIterator<Item = NumT>,
-    NumT: Float
-{
-    pub fn integrator(&mut self) -> &Leapfrog<NumT> {
+// impl<EleT, NumT, ParT, VecT> State<EleT, NumT, ParT, VecT> 
+// where
+//     ParT: IsAtomic<EleT, NumT, VecT>,
+//     VecT: IntoIterator<Item = NumT>,
+//     NumT: Float
+// {
+// this is, after all, a specific implementation.  So let's keep it that way for now.
+impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
+    pub fn integrator(&mut self) -> &Leapfrog<f64> {
         &self.integrator
     }
 
@@ -689,7 +682,7 @@ where
 
         // update the dynamics!  DO NOT WRITE DURING THIS TIME.
         // let newWorld: HashMap::<String, Box<dyn IsAtomic>> = HashMap::new();
-        let mut accVec = HashMap::<String, Vec<NumT>>::new();
+        let mut accVec = HashMap::<String, Vec<f64>>::new();
         for (name, _) in self.space_time.get_particles() {
             accVec.insert(
                 name.clone(),

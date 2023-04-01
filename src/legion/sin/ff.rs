@@ -3,7 +3,7 @@ use num_traits::{float::FloatCore, real::Real, Float};
 use crate::legion::topology::{atom::{Atom, AtomBuilder}, particle::IsSpatial};
 
 // it's useful to include the mass
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Elements {
     H(u32),
     C(u32),
@@ -53,7 +53,7 @@ impl<ParT, EleT> ParticleGenerator<ParT, EleT> for SIN<EleT> {
 impl ForceField<Elements, f64, Vec<f64>> for SIN<Elements> {
     fn atom(&self, element: Elements) -> Atom<Elements, f64, Vec<f64>> {
         AtomBuilder::new()
-        .element(element)
+        .element(element.clone())
         .charge(self.charge(&element))
         .mass(self.mass(&element))
         .build()

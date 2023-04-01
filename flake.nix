@@ -51,6 +51,7 @@
           nodejs
           pnpm
           yarn
+          wasm-pack
         ];
 
         shellHook = ''
