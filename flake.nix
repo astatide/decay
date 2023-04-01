@@ -52,6 +52,7 @@
           pnpm
           yarn
           wasm-pack
+          darwin.apple_sdk.frameworks.AppKit
         ];
 
         shellHook = ''
