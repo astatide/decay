@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use num_traits::Float;
 
 use crate::gin::instance::Instance;
+use crate::legion::sin::ff::ParticleGenerator;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
 use log::{debug, error, info, log_enabled, Level};
 use rand::{prelude::Distribution, Rng};
@@ -107,7 +108,7 @@ where
 
 impl<EleT, NumT: Float, ParT, VecT> StateBuilder<EleT, NumT, ParT, VecT>
 where
-    ParT: IsAtomic<EleT, NumT, VecT>,
+    ParT: IsAtomic<EleT, NumT, VecT> + IsSpatial,
     VecT: IntoIterator<Item = NumT>,
 {
     pub fn new(window: Window) -> Self {
@@ -408,7 +409,7 @@ where
             .as_ref().unwrap()
             .create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[self.camera_uniform]),
+                contents: bytemuck::cast_slice(&[self.camera_uniform.as_ref().unwrap()]),
                 usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
             });
         self.camera_buffer = Some(camera_buffer);
@@ -563,14 +564,14 @@ where
         self
     }
 
-    pub fn space_time_set_particles(mut self) -> Self {
+    pub fn space_time_set_particles(mut self, element: EleT) -> Self {
         let mut priorAtom = "".to_string();
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
         let mut allAtoms = Vec::<String>::new();
         for instance in &mut self.instances.unwrap() {
-            let mut atom = self.sin.as_ref().unwrap().atom(ff::Elements::H(0));
+            let mut atom: &ParT = self.sin.as_ref().unwrap().generate_particle(element);
             atom.generate_spatial_coordinates(3);
-            instance.id = Some(atom.id.clone());
+            instance.id = Some(atom.get_id().clone());
             let pos = vec![
                 instance.position.x.to_f64().unwrap(),
                 instance.position.y.to_f64().unwrap(),

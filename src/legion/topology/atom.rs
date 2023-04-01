@@ -19,6 +19,7 @@ pub trait Connected<VecT: IntoIterator> {
     fn force(&self);
     fn get_neighbors(&self) -> &VecT;
     fn set_neighbors(&mut self, neighbors: VecT);
+    fn get_id(&self) -> String;
 }
 
 pub trait IsAtomic<EleT, NumT, VecT: IntoIterator<Item=NumT>>:
@@ -156,6 +157,9 @@ impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> Connected<Vec<String>> fo
     }
     fn set_neighbors(&mut self, neighbors: Vec<String>) {
         self.neighbors = neighbors;
+    }
+    fn get_id(&self) -> String {
+        self.id.clone()
     }
 }
 
