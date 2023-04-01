@@ -1,4 +1,4 @@
-use crate::legion::sin::ff::{Elements, ForceField};
+use crate::Legion::ForceFields::SIN::{Elements, ForceField};
 
 pub trait HasMass<NumT> {
     fn set_mass(&mut self, mass: NumT);

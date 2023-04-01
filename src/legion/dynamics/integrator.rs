@@ -1,7 +1,7 @@
-use crate::legion::sin::ff::{Elements, ForceField};
-use crate::legion::topology::atom::IsAtomic;
-use crate::legion::topology::particle::HasPhysics;
-use crate::legion::topology::spaceTime::ContainsParticles;
+use crate::Legion::ForceFields::SIN::{Elements, ForceField};
+use crate::Legion::Topology::atom::IsAtomic;
+use crate::Legion::Topology::particle::HasPhysics;
+use crate::Legion::Topology::spaceTime::ContainsParticles;
 use cgmath::num_traits::ToPrimitive;
 use num_traits::float::FloatCore;
 use num_traits::real::Real;

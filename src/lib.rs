@@ -1,4 +1,4 @@
-use legion::{sin::ff::Elements, topology::atom::Atom};
+use crate::Legion::{ForceFields::SIN::Elements, Topology::atom::Atom};
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop, self},
@@ -7,10 +7,12 @@ use winit::{
 
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
-use crate::GIN::{state::{State}, builders::state_builder::StateBuilder};
-mod legion;
+use crate::GIN::{state::{State}, Builders::state_builder::StateBuilder};
+// use crate::GIN::State;
+// mod legion;
 use log::{debug, error, log_enabled, info, Level};
 
+mod Legion;
 mod GIN;
 
 // #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]

@@ -4,7 +4,7 @@ use num_traits::Float;
 
 use crate::GIN::instance::Instance;
 use crate::GIN::state::State;
-use crate::legion::sin::ff::ParticleGenerator;
+use crate::Legion::ForceFields::SIN::ParticleGenerator;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
 use log::{debug, error, info, log_enabled, Level};
 use rand::{prelude::Distribution, Rng};
@@ -16,12 +16,12 @@ use winit::{
     window::Window,
 };
 
-use crate::legion::{
-    dynamics::integrator::{Integrator, Leapfrog},
-    sin::ff::{self, Elements, ForceField},
-    topology::atom::{Atom, Connected, IsAtomic},
-    topology::particle::{self, HasPhysics, IsSpatial},
-    topology::spaceTime::{self, ContainsParticles, SpaceTime},
+use crate::Legion::{
+    Dynamics::integrator::{Integrator, Leapfrog},
+    ForceFields::SIN::{self, Elements, ForceField},
+    Topology::atom::{Atom, Connected, IsAtomic},
+    Topology::particle::{self, HasPhysics, IsSpatial},
+    Topology::spaceTime::{self, ContainsParticles, SpaceTime},
 };
 
 use crate::GIN::{camera, instance, primitives, time, vertex, state};
@@ -66,7 +66,7 @@ where
     space_time: Option<SpaceTime<ParT, NumT>>,
     dimensions: Option<u32>,
     integrator: Option<Leapfrog<NumT>>,
-    sin: Option<ff::SIN<EleT>>,
+    sin: Option<SIN::SIN<EleT>>,
 }
 
 impl<EleT, NumT: Float, ParT, VecT> StateBuilder<EleT, NumT, ParT, VecT>
@@ -519,7 +519,7 @@ where
     pub fn sin(mut self) -> Self {
         // let's just make some atoms!
         // let's make them use some of the instance things.
-        let sin = ff::SIN::<EleT> {
+        let sin = SIN::SIN::<EleT> {
             description: "SIN".to_string(),
             particle_type: Vec::new(),
         };

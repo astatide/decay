@@ -1,6 +1,6 @@
 use num_traits::{float::FloatCore, real::Real, Float};
 
-use crate::legion::topology::{atom::{Atom, AtomBuilder}, particle::IsSpatial};
+use crate::Legion::Topology::{atom::{Atom, AtomBuilder}, particle::IsSpatial};
 
 // it's useful to include the mass
 #[derive(Debug, Clone)]

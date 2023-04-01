@@ -1,4 +1,4 @@
-use crate::legion::sin::ff::{Elements, ForceField};
+use crate::Legion::ForceFields::SIN::{Elements, ForceField};
 use std::collections::HashMap;
 use num_traits::{Zero, Float};
 

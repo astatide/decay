@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use num_traits::Float;
 
 use crate::GIN::instance::Instance;
-use crate::legion::sin::ff::ParticleGenerator;
+use crate::Legion::ForceFields::SIN::ParticleGenerator;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
 use log::{debug, error, info, log_enabled, Level};
 use rand::{prelude::Distribution, Rng};
@@ -15,12 +15,12 @@ use winit::{
     window::Window,
 };
 
-use crate::legion::{
-    dynamics::integrator::{Integrator, Leapfrog},
-    sin::ff::{self, Elements, ForceField},
-    topology::atom::{Atom, Connected, IsAtomic},
-    topology::particle::{self, HasPhysics, IsSpatial},
-    topology::spaceTime::{self, ContainsParticles, SpaceTime},
+use crate::Legion::{
+    Dynamics::integrator::{Integrator, Leapfrog},
+    ForceFields::SIN::{self, Elements, ForceField},
+    Topology::atom::{Atom, Connected, IsAtomic},
+    Topology::particle::{self, HasPhysics, IsSpatial},
+    Topology::spaceTime::{self, ContainsParticles, SpaceTime},
 };
 
 use crate::GIN::{camera, instance, primitives, time, vertex};
@@ -62,7 +62,7 @@ where
     pub(crate) space_time: SpaceTime<ParT, NumT>,
     pub(crate) dimensions: u32,
     pub(crate) integrator: Leapfrog<NumT>,
-    pub(crate) sin: ff::SIN<EleT>,
+    pub(crate) sin: SIN::SIN<EleT>,
 }
 
 // impl<EleT, NumT, ParT, VecT> State<EleT, NumT, ParT, VecT> 
