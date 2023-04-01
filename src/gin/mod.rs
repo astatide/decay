@@ -1,4 +1,5 @@
 // GIN!  Graphics and INput.
+pub mod builders;
 
 pub mod camera;
 pub mod instance;

@@ -7,8 +7,7 @@ use winit::{
 
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
-use crate::GIN::state::{State};
-use crate::GIN
+use crate::GIN::{state::{State}, builders::state_builder::StateBuilder};
 mod legion;
 use log::{debug, error, log_enabled, info, Level};
 

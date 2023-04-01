@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 use num_traits::Float;
 
 use crate::GIN::instance::Instance;
+use crate::GIN::state::State;
 use crate::legion::sin::ff::ParticleGenerator;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
 use log::{debug, error, info, log_enabled, Level};
@@ -23,9 +24,7 @@ use crate::legion::{
     topology::spaceTime::{self, ContainsParticles, SpaceTime},
 };
 
-use crate::GIN::{camera, instance, primitives, time, vertex};
-
-use super::state::State;
+use crate::GIN::{camera, instance, primitives, time, vertex, state};
 
 const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 60.0;
 
