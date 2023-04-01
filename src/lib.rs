@@ -7,11 +7,12 @@ use winit::{
 
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
-use crate::gin::state::{State, StateBuilder};
+use crate::GIN::state::{State};
+use crate::GIN
 mod legion;
 use log::{debug, error, log_enabled, info, Level};
 
-mod gin;
+mod GIN;
 
 // #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 
@@ -86,7 +87,7 @@ impl DecayExport {
             .dimensions()
             .space_time()
             .sin()
-            .space_time_set_particles(Elements::H((0)))
+            // .space_time_set_particles(Elements::H((0)))
             .integrator()
             .build();
 

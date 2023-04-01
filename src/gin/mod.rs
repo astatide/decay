@@ -1,3 +1,5 @@
+// GIN!  Graphics and INput.
+
 pub mod camera;
 pub mod instance;
 pub mod primitives;

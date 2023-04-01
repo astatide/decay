@@ -2,7 +2,7 @@ use std::{borrow::BorrowMut, collections::HashMap, ops::Deref};
 use std::marker::PhantomData;
 use num_traits::Float;
 
-use crate::gin::instance::Instance;
+use crate::GIN::instance::Instance;
 use crate::legion::sin::ff::ParticleGenerator;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
 use log::{debug, error, info, log_enabled, Level};
@@ -23,7 +23,7 @@ use crate::legion::{
     topology::spaceTime::{self, ContainsParticles, SpaceTime},
 };
 
-use crate::gin::{camera, instance, primitives, time, vertex};
+use crate::GIN::{camera, instance, primitives, time, vertex};
 
 use super::state::State;
 
@@ -529,7 +529,9 @@ where
     }
 
     pub fn space_time_set_particles(mut self, element: EleT) -> Self {
-        todo!()
+        // yay!
+        self
+        // todo!()
         // let mut priorAtom = "".to_string();
         // // Add in an atom for each triangle!  Fake a bond, make it work designers!
         // let mut allAtoms = Vec::<String>::new();
