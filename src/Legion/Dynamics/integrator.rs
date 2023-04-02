@@ -2,30 +2,10 @@ use crate::Legion::ForceFields::SIN::{Elements, ForceField};
 use crate::Legion::Topology::atom::IsAtomic;
 use crate::Legion::Topology::particle::HasPhysics;
 use crate::Legion::Topology::spaceTime::ContainsParticles;
-use cgmath::num_traits::ToPrimitive;
 use num_traits::float::FloatCore;
 use num_traits::real::Real;
 use num_traits::{Float, Zero};
-use rand::prelude::Distribution;
-use rand::Rng;
 use uuid::Uuid;
-
-// The number has to support being subtracted!  See how we're doing it?
-pub fn distance<ParT: HasPhysics<Vec<NumT>>, NumT: std::ops::Sub<Output = NumT>>(
-    A: &ParT,
-    B: &ParT,
-) -> Vec<NumT>
-where
-    NumT: Copy,
-{
-    let mut r: Vec<NumT> = Vec::new();
-    let other_ijk = B.get_position();
-    let ijk = A.get_position();
-    for i in 0..ijk.len() {
-        r.push(ijk[i] - other_ijk[i]);
-    }
-    return r;
-}
 
 pub trait Integrator<ParT, EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> {
     fn integrate(&self, particle: &ParT, acc: VecT) -> (VecT, VecT, VecT);
@@ -45,6 +25,23 @@ pub struct Leapfrog<NumT: Float> {
     pub id: String,
     pub integrator_type: IntegratorTypes,
     pub dt: NumT,
+}
+
+// The number has to support being subtracted!  See how we're doing it?
+pub fn distance<ParT: HasPhysics<Vec<NumT>>, NumT: std::ops::Sub<Output = NumT>>(
+    A: &ParT,
+    B: &ParT,
+) -> Vec<NumT>
+where
+    NumT: Copy,
+{
+    let mut r: Vec<NumT> = Vec::new();
+    let other_ijk = B.get_position();
+    let ijk = A.get_position();
+    for i in 0..ijk.len() {
+        r.push(ijk[i] - other_ijk[i]);
+    }
+    return r;
 }
 
 // specific implementation blah blah
@@ -99,9 +96,6 @@ where
         sin: &impl ForceField<Elements, NumT, Vec<NumT>>,
     ) -> Vec<NumT> {
         let atoms = world.get_particles();
-        let mut rng = rand::thread_rng();
-        // let sign: rand::distributions::Uniform<NumT> = rand::distributions::Uniform::from(-1.0..1.1);
-        // let applyJitter = true;
         let atom = &atoms[&name];
         let neighbors = atom.get_neighbors();
         let mut force_sum: Vec<NumT> =
@@ -120,33 +114,6 @@ where
                 force_sum[i] = force * z; // cast back, etc.
             }
         }
-
-        // if applyJitter {
-        //     for (_i, z) in force_sum.iter_mut().enumerate() {
-        //         *z += (rng.gen_range(0.0..10000.0)/10.0).to_f64().unwrap() * sign.sample(&mut rng).to_f64().unwrap();
-        //     }
-        // }
         return force_sum;
     }
 }
-
-// stolen from Legion, which I also wrote so that's fine.
-/*
-class integrator : functionBase {
-  var dt: real;
-  proc this(ref atom: Particles.Atom, acc: LinAlg.vector) {
-    // leapfrog / verlet
-    atom.pos += (atom.vel*dt) + (0.5*acc*dt**2);
-    atom.vel += (acc*dt*0.5);
-  }
-  // uggghhhhh _apparently_ if we don't use this, it calls the superclass method, regardless of the arguments.  Blagh.
-  //proc this(ref atom: Particles.Atom, acc: LinAlg.vector) { this.__internal__(atom, acc); }
-}
-
-class dampingForce : functionBase {
-  var dampingStrength: real = 0.5;
-  proc this(ref atom: Particles.Atom) {
-    // bullshit damping force.
-    atom.vel *= dampingStrength;
-  }
-} */

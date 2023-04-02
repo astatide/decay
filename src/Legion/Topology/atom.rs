@@ -2,13 +2,9 @@ use super::particle::HasCharge;
 use super::particle::HasMass;
 use super::particle::HasPhysics;
 use super::particle::IsSpatial;
-use super::particle::Particle;
-use crate::Legion::ForceFields::SIN::{Elements, ForceField};
-use cgmath::num_traits::ToPrimitive;
 use std::collections::HashMap;
-use std::ops::Sub;
 use uuid::Uuid;
-use num_traits::{Float, Zero};
+use num_traits::{Float};
 
 pub trait HasElement<EleT> {
     fn get_element(&self) -> &EleT;
@@ -122,25 +118,6 @@ where
 
 
 }
-
-// impl<EleT, NumT: Float> Atom<EleT, NumT, Vec<NumT>> {
-//     pub fn new(element: EleT, ff: &impl ForceField<EleT, NumT, Vec<NumT>>) -> Self {
-//         let mass = ff.mass(&element);
-//         let charge = ff.charge(&element);
-
-//         return Self {
-//             element: element,
-//             id: Uuid::new_v4().to_string(),
-//             neighbors: Vec::<String>::new(),
-//             mass: mass,
-//             charge: charge,
-//             position: Vec::<NumT>::new(),
-//             velocity: Vec::<NumT>::new(),
-//             acceleration: Vec::<NumT>::new(),
-//         };
-//     }
-// }
-
 impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> IsAtomic<EleT, NumT, VecT> for Atom<EleT, NumT, VecT> {}
 
 impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> HasElement<EleT> for Atom<EleT, NumT, VecT> {

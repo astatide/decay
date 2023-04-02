@@ -1,29 +1,24 @@
-use std::{borrow::BorrowMut, collections::HashMap, ops::Deref};
+use std::{collections::HashMap};
 use std::marker::PhantomData;
 use num_traits::Float;
 
-use crate::GIN::instance::Instance;
-use crate::Legion::ForceFields::SIN::ParticleGenerator;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
-use log::{debug, error, info, log_enabled, Level};
-use rand::{prelude::Distribution, Rng};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
-use wgpu::util::DeviceExt;
 use winit::{
-    event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
+    event::{WindowEvent},
     window::Window,
 };
 
 use crate::Legion::{
     Dynamics::integrator::{Integrator, Leapfrog},
-    ForceFields::SIN::{self, Elements, ForceField},
-    Topology::atom::{Atom, Connected, IsAtomic},
-    Topology::particle::{self, HasPhysics, IsSpatial},
-    Topology::spaceTime::{self, ContainsParticles, SpaceTime},
+    ForceFields::SIN::{self, Elements},
+    Topology::atom::{Atom, IsAtomic},
+    Topology::particle::{HasPhysics},
+    Topology::spaceTime::{ContainsParticles, SpaceTime},
 };
 
-use crate::GIN::{camera, instance, primitives, time, vertex};
+use crate::GIN::{camera, instance, time};
 
 const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 60.0;
 
@@ -58,20 +53,12 @@ where
     pub(crate) instances: Vec<instance::Instance>,
     pub(crate) instance_buffer: wgpu::Buffer,
     pub(crate) rng: rand::rngs::ThreadRng,
-    // pub(crate) // particles: Option<HashMap<String, Box<dyn IsAtomic>>>,
     pub(crate) space_time: SpaceTime<ParT, NumT>,
     pub(crate) dimensions: u32,
     pub(crate) integrator: Leapfrog<NumT>,
     pub(crate) sin: SIN::SIN<EleT>,
 }
 
-// impl<EleT, NumT, ParT, VecT> State<EleT, NumT, ParT, VecT> 
-// where
-//     ParT: IsAtomic<EleT, NumT, VecT>,
-//     VecT: IntoIterator<Item = NumT>,
-//     NumT: Float
-// {
-// this is, after all, a specific implementation.  So let's keep it that way for now.
 impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
     pub fn integrator(&mut self) -> &Leapfrog<f64> {
         &self.integrator
@@ -129,17 +116,6 @@ impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
             }
         }
 
-        // TODO MOVE TIME
-        // self.time[0] += 0.0002;
-        // self.time[1] += 0.0002;
-        // self.time[2] += 0.0002;
-        // self.time[3] += 0.0002;
-        // self.time_uniform.update_time(self.time);
-        // self.queue.write_buffer(&self.time_buffer, 0, bytemuck::cast_slice(&[self.time_uniform]));
-
-        // this is from the challenge.rs; look how the instance position update and modification is done!
-        // looks like we update the buffer; interesting!
-        // start up some random jitter, just to test.
         for instance in &mut self.instances {
             let amount = cgmath::Quaternion::from_angle_y(cgmath::Rad(ROTATION_SPEED));
             let current = instance.rotation;
@@ -150,7 +126,6 @@ impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
                 .get(&instance.id.clone().unwrap())
                 .unwrap()
                 .get_position();
-            // let atom_pos = world.get(&instance.id.clone().unwrap()).clone().unwrap().get_position();
             instance.position = instance.original_position;
             instance.position.x += atom_pos.get(0).unwrap().to_f32().unwrap();
 
@@ -199,7 +174,6 @@ impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
                 depth_stencil_attachment: None,
             });
             render_pass.set_pipeline(&self.render_pipeline); // 2.
-                                                             // render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
 
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
@@ -213,10 +187,6 @@ impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
             // UPDATED!
             // Make sure if you add new instances to the Vec, that you recreate the instance_buffer and as well as camera_bind_group, otherwise your new instances won't show up correctly.
             render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
-
-            // render_pass.draw_indexed(0..self.num_indices, 0, 0..1); // 2.
-
-            // render_pass.draw(0..self.num_vertices, 0..1);
         }
 
         // submit will accept anything that implements IntoIter
