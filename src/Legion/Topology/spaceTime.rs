@@ -55,7 +55,7 @@ mod tests {
     }
 
     #[test]
-    fn test_set_particles() {
+    fn test_get_and_set_particles() {
         let mut space_time = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
         let SinFF = SIN::<Elements> {
             description: "SIN".to_string(),
@@ -66,11 +66,5 @@ mod tests {
         particles.insert(atom.id.clone(), atom);
         space_time.set_particles(particles.clone());
         assert_eq!(*space_time.get_particles(), particles);
-    }
-
-    #[test]
-    fn test_force_field_atom_builder() {
-
-        // matches!(atom.get_element(), Elements::H(0));
     }
 }
