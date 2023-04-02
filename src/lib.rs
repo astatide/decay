@@ -1,3 +1,4 @@
+use crate::{Legion::{ForceFields::SIN::Elements, Topology::atom::Atom}, GIN::Builders::state_builder::StateBuilderParticles};
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop, self},
@@ -6,11 +7,13 @@ use winit::{
 
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
-use crate::gin::state::State;
-mod legion;
+use crate::GIN::{state::{State}, Builders::state_builder::StateBuilder};
+// use crate::GIN::State;
+// mod legion;
 use log::{debug, error, log_enabled, info, Level};
 
-mod gin;
+mod Legion;
+mod GIN;
 
 // #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
 
@@ -20,7 +23,7 @@ static mut WIDTH: u32 = 200;
 // static mut STATE: &State;
 #[cfg_attr(target_arch="wasm32", wasm_bindgen)]
 pub struct DecayExport {
-    state: State,
+    state: State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>,
 }
 
 impl DecayExport {
@@ -56,8 +59,39 @@ impl DecayExport {
         }
     
         // Adding in the state!
-        let state = State::new(window).await;
-    
+        // let state = State::new(window).await;
+        let state = StateBuilder::<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>::new(window)
+            .size()
+            .instance()
+            .surface()
+            .adapter().await
+            .device_queue().await
+            .config()
+            .render_pipeline()
+            .vertex_buffer()
+            .index_buffer()
+            .num_indices()
+            .num_vertices()
+            .camera()
+            .camera_uniform()
+            .camera_buffer()
+            .camera_bind_group()
+            .camera_controller()
+            .time()
+            .time_uniform()
+            .time_buffer()
+            .time_bind_group()
+            .instances()
+            .instance_buffer()
+            .rng()
+            .particles()
+            .dimensions()
+            .space_time()
+            .sin()
+            .space_time_set_particles(Elements::H((0)))
+            .integrator()
+            .build();
+
         let mut _dt = 0.0;
 
         Self {
