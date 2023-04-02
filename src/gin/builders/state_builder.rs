@@ -26,7 +26,9 @@ use crate::Legion::{
 
 use crate::GIN::{camera, instance, primitives, time, vertex, state};
 
-const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 60.0;
+pub trait StateBuilderParticles<EleT> {
+    fn space_time_set_particles(self, element: EleT) -> Self;
+}
 
 pub struct StateBuilder<EleT, NumT, ParT, VecT>
 where
@@ -527,45 +529,6 @@ where
         self
     }
 
-    pub fn space_time_set_particles(mut self, element: EleT) -> Self {
-        // yay!
-        self
-        // todo!()
-        // let mut priorAtom = "".to_string();
-        // // Add in an atom for each triangle!  Fake a bond, make it work designers!
-        // let mut allAtoms = Vec::<String>::new();
-        // for instance in &mut self.instances.unwrap() {
-        //     let mut atom: &ParT = self.sin.as_ref().unwrap().generate_particle(element);
-        //     atom.generate_spatial_coordinates(3);
-        //     instance.id = Some(atom.get_id().clone());
-        //     let pos = vec![
-        //         instance.position.x.to_f64().unwrap(),
-        //         instance.position.y.to_f64().unwrap(),
-        //         instance.position.z.to_f64().unwrap(),
-        //     ];
-        //     atom.set_position(pos);
-        //     let mut rng = rand::thread_rng();
-        //     let sign: rand::distributions::Uniform<f64> =
-        //         rand::distributions::Uniform::from(-1.0..1.1);
-        //     let applyJitter = true;
-        //     if applyJitter {
-        //         let mut vel = vec![0.0; 3];
-        //         for i in 0..3 {
-        //             vel[i] = (rng.gen_range(0.0..1000.0) / 1000.0) * sign.sample(&mut rng);
-        //         }
-        //         atom.set_velocity(vel);
-        //     }
-        //     if priorAtom != "".to_string() {
-        //         atom.neighbors.push(priorAtom.clone());
-        //     }
-        //     priorAtom = atom.id.clone();
-        //     allAtoms.push(atom.id.clone());
-        //     self.particles.as_ref().unwrap().insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
-        // }
-        // self.space_time.as_ref().unwrap().set_particles(self.particles.unwrap());
-        // self
-    }
-
     pub fn integrator(mut self) -> Self {
         let integrator = Leapfrog::<NumT>::new();
         self.integrator = Some(integrator);
@@ -604,4 +567,48 @@ where
             sin: self.sin.unwrap(),
         }
     }
+}
+
+impl StateBuilderParticles<Elements> for StateBuilder<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> 
+where
+{
+    fn space_time_set_particles(mut self, element: Elements) -> Self {
+        let mut priorAtom = "".to_string();
+        // Add in an atom for each triangle!  Fake a bond, make it work designers!
+        let mut allAtoms = Vec::<String>::new();
+        let mut atomHashMap: HashMap<String, Atom<Elements, f64, Vec<f64>>> = HashMap::new();
+        for instance in self.instances.as_mut().unwrap() {
+            let mut atom: Atom<Elements, f64, Vec<f64>> = self.sin.as_ref().unwrap().generate_particle(element.clone());
+            atom.generate_spatial_coordinates(3);
+            instance.id = Some(atom.get_id().clone());
+            let pos = vec![
+                instance.position.x.to_f64().unwrap(),
+                instance.position.y.to_f64().unwrap(),
+                instance.position.z.to_f64().unwrap(),
+            ];
+            atom.set_position(pos);
+            let mut rng = rand::thread_rng();
+            let sign: rand::distributions::Uniform<f64> =
+                rand::distributions::Uniform::from(-1.0..1.1);
+            let applyJitter = true;
+            if applyJitter {
+                let mut vel = vec![0.0; 3];
+                for i in 0..3 {
+                    vel[i] = (rng.gen_range(0.0..1000.0) / 1000.0) * sign.sample(&mut rng);
+                }
+                atom.set_velocity(vel);
+            }
+            if priorAtom != "".to_string() {
+                atom.neighbors.push(priorAtom.clone());
+            }
+            priorAtom = atom.id.clone();
+            allAtoms.push(atom.id.clone());
+            atomHashMap.insert(atom.id.clone(), atom);
+            // self.particles.unwrap().insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
+        }
+        // self.particles = Some(atomHashMap);
+        self.space_time.as_mut().unwrap().set_particles(atomHashMap);
+        self
+    }
+
 }
