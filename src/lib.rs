@@ -1,4 +1,4 @@
-use crate::Legion::{ForceFields::SIN::Elements, Topology::atom::Atom};
+use crate::{Legion::{ForceFields::SIN::Elements, Topology::atom::Atom}, GIN::Builders::state_builder::StateBuilderParticles};
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop, self},
@@ -88,7 +88,7 @@ impl DecayExport {
             .dimensions()
             .space_time()
             .sin()
-            // .space_time_set_particles(Elements::H((0)))
+            .space_time_set_particles(Elements::H((0)))
             .integrator()
             .build();
 

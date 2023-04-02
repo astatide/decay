@@ -43,9 +43,15 @@ pub struct SIN<ParT> {
     pub particle_type: Vec<ParT>,
 }
 
-impl<ParT, EleT> ParticleGenerator<ParT, EleT> for SIN<EleT> {
-    fn generate_particle(&self, element: EleT) -> ParT {
-        todo!()
+// impl<ParT, EleT> ParticleGenerator<ParT, EleT> for SIN<EleT> {
+//     fn generate_particle(&self, element: EleT) -> ParT {
+//         todo!()
+//     }
+// }
+
+impl ParticleGenerator<Atom<Elements, f64, Vec<f64>>, Elements> for SIN<Elements> {
+    fn generate_particle(&self, element: Elements) -> Atom<Elements, f64, Vec<f64>> {
+        return self.atom(element);
     }
 }
 
