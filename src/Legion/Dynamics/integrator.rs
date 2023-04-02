@@ -75,10 +75,6 @@ where
     fn integrate(&self, atom: &ParT, mut acc: Vec<NumT>) -> (Vec<NumT>, Vec<NumT>, Vec<NumT>) {
         let mut pos = atom.get_position().clone();
         let mut vel = atom.get_velocity().clone();
-        let mut oAcc = atom.get_acceleration().clone();
-        for i in 0..pos.len() {
-            acc[i] += oAcc[i];
-        }
         for i in 0..pos.len() {
             pos[i] += (vel[i] * (self.dt)) + (acc[i] * (FloatCore::powi(self.dt, 2) * 0.5));
         }
@@ -150,7 +146,7 @@ mod tests {
     }
 
     #[test]
-    fn test_calculate_forces() {
+    fn test_calculate_forces_and_integrate() {
         let integrator = Leapfrog::<f64>::new();
         let SinFF = SIN::<Elements> {
             description: "SIN".to_string(),
@@ -158,10 +154,17 @@ mod tests {
         };
         let mut atomA = SinFF.atom(Elements::H(0));
         let mut atomB = SinFF.atom(Elements::H(0));
+        // set positions
         let posA = vec![1.0, 1.0, 1.0];
         let posB = vec![0.0, 0.0, 0.0];
         atomA.set_position(posA);
         atomB.set_position(posB);
+        // set velocity
+        let velA = vec![1.0, 1.0, 1.0];
+        let velB = vec![0.0, 0.0, 0.0];
+        atomA.set_velocity(velA);
+        atomB.set_velocity(velB);
+        // set neighbors
         atomA.set_neighbors(vec![atomB.id.clone()]);
         atomB.set_neighbors(vec![atomA.id.clone()]);
         let mut space_time = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
@@ -170,31 +173,7 @@ mod tests {
         particles.insert(atomA.id.clone(), atomA);
         particles.insert(atomB.id.clone(), atomB);
         space_time.set_particles(particles);
-        let acc = integrator.calculate_forces(name, &space_time, &SinFF);
+        let acc = integrator.calculate_forces(name.clone(), &space_time, &SinFF);
+        let (pos, vel, acc) = integrator.integrate(space_time.get_particles().get(&name).unwrap(), acc);
     }
-
-    // #[test]
-    // fn test_create_space_time() {
-    //     let space_time = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
-    //     assert_eq!(space_time.dimensions, 3);
-    //     let SinFF = SIN::<Elements> {
-    //         description: "SIN".to_string(),
-    //         particle_type: Vec::new(),
-    //     };
-    //     assert_eq!(SinFF.description, "SIN".to_string());
-    // }
-
-    // #[test]
-    // fn test_get_and_set_particles() {
-    //     let mut space_time = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
-    //     let SinFF = SIN::<Elements> {
-    //         description: "SIN".to_string(),
-    //         particle_type: Vec::new(),
-    //     };
-    //     let atom = SinFF.atom(Elements::H(0));
-    //     let mut particles = HashMap::<String, Atom<Elements, f64, Vec<f64>>>::new();
-    //     particles.insert(atom.id.clone(), atom);
-    //     space_time.set_particles(particles.clone());
-    //     assert_eq!(*space_time.get_particles(), particles);
-    // }
 }
