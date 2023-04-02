@@ -1,4 +1,3 @@
-use crate::Legion::ForceFields::SIN::{Elements, ForceField};
 use std::collections::HashMap;
 use num_traits::{Zero, Float};
 
@@ -8,10 +7,6 @@ pub trait ContainsParticles<ParT> {
     fn get_particles(&self) -> &HashMap<String, ParT>;
     fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT>;
 }
-// pub trait ContainsAtomicParticles {
-//     fn get_particles(&self) -> Option<&HashMap<String, Box<dyn IsAtomic>>>;
-//     fn get_mut_particles(&mut self) -> Option<&mut HashMap<String, Box<dyn IsAtomic>>>;
-// }
 
 pub struct SpaceTime<ParT, NumT: Float> {
     particles: HashMap<String, ParT>,
@@ -31,10 +26,6 @@ impl<ParT, NumT: Float> SpaceTime<ParT, NumT> {
     pub fn set_particles(&mut self, particles: HashMap<String, ParT>) {
         self.particles = particles;
     }
-
-    // pub fn set_atomic_particles(&mut self, particles: Option<HashMap<String, Box<dyn IsAtomic>>>) {
-    //     self.atomic_particles = particles;
-    // }
 }
 
 impl<ParT, NumT: Float> ContainsParticles<ParT> for SpaceTime<ParT, NumT> {
@@ -45,12 +36,3 @@ impl<ParT, NumT: Float> ContainsParticles<ParT> for SpaceTime<ParT, NumT> {
         return &self.particles;
     }
 }
-
-// impl ContainsAtomicParticles for SpaceTime {
-//     fn get_mut_particles(&mut self) -> Option<&mut HashMap<String, Box<dyn IsAtomic>>> {
-//         return self.atomic_particles.as_mut();
-//     }
-//     fn get_particles(&self) -> Option<&HashMap<String, Box<dyn IsAtomic>>> {
-//         return self.atomic_particles.as_ref();
-//     }
-// }

@@ -1,30 +1,27 @@
-use std::{borrow::BorrowMut, collections::HashMap, ops::Deref};
+use std::{collections::HashMap};
 use std::marker::PhantomData;
 use num_traits::Float;
 
-use crate::GIN::instance::Instance;
 use crate::GIN::state::State;
 use crate::Legion::ForceFields::SIN::ParticleGenerator;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
-use log::{debug, error, info, log_enabled, Level};
 use rand::{prelude::Distribution, Rng};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::{
-    event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
     window::Window,
 };
 
 use crate::Legion::{
-    Dynamics::integrator::{Integrator, Leapfrog},
-    ForceFields::SIN::{self, Elements, ForceField},
+    Dynamics::integrator::{Leapfrog},
+    ForceFields::SIN::{self, Elements},
     Topology::atom::{Atom, Connected, IsAtomic},
-    Topology::particle::{self, HasPhysics, IsSpatial},
-    Topology::spaceTime::{self, ContainsParticles, SpaceTime},
+    Topology::particle::{HasPhysics, IsSpatial},
+    Topology::spaceTime::{SpaceTime},
 };
 
-use crate::GIN::{camera, instance, primitives, time, vertex, state};
+use crate::GIN::{camera, instance, primitives, time, vertex};
 
 pub trait StateBuilderParticles<EleT> {
     fn space_time_set_particles(self, element: EleT) -> Self;
@@ -513,7 +510,7 @@ where
     }
 
     pub fn space_time(mut self) -> Self {
-        let mut space_time = SpaceTime::<ParT, NumT>::new();
+        let space_time = SpaceTime::<ParT, NumT>::new();
         self.space_time = Some(space_time);
         self
     }
@@ -604,9 +601,7 @@ where
             priorAtom = atom.id.clone();
             allAtoms.push(atom.id.clone());
             atomHashMap.insert(atom.id.clone(), atom);
-            // self.particles.unwrap().insert(atom.id.clone(), atom); // we clone/copy the string to avoid problems with lifetimes.
         }
-        // self.particles = Some(atomHashMap);
         self.space_time.as_mut().unwrap().set_particles(atomHashMap);
         self
     }
