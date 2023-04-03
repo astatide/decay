@@ -2,9 +2,9 @@ use super::particle::HasCharge;
 use super::particle::HasMass;
 use super::particle::HasPhysics;
 use super::particle::IsSpatial;
+use num_traits::Float;
 use std::collections::HashMap;
 use uuid::Uuid;
-use num_traits::{Float};
 
 pub trait HasElement<EleT> {
     fn get_element(&self) -> &EleT;
@@ -17,7 +17,7 @@ pub trait Connected<VecT: IntoIterator> {
     fn get_id(&self) -> String;
 }
 
-pub trait IsAtomic<EleT, NumT, VecT: IntoIterator<Item=NumT>>:
+pub trait Atomic<EleT, NumT, VecT: IntoIterator<Item = NumT>>:
     HasPhysics<VecT> + HasElement<EleT> + Connected<Vec<String>>
 {
 }
@@ -27,7 +27,7 @@ pub trait IsAtomic<EleT, NumT, VecT: IntoIterator<Item=NumT>>:
 pub struct Atom<EleT, NumT, VecT>
 where
     NumT: Float,
-    VecT: IntoIterator<Item=NumT>
+    VecT: IntoIterator<Item = NumT>,
 {
     pub element: EleT,
     pub id: String,
@@ -39,10 +39,10 @@ where
     pub acceleration: VecT,
 }
 
-pub struct AtomBuilder<EleT, NumT, VecT> 
+pub struct AtomBuilder<EleT, NumT, VecT>
 where
     NumT: Float,
-    VecT: IntoIterator<Item=NumT>
+    VecT: IntoIterator<Item = NumT>,
 {
     pub element: Option<EleT>,
     pub id: Option<String>,
@@ -54,10 +54,10 @@ where
     pub acceleration: Option<VecT>,
 }
 
-impl<EleT, NumT, VecT> AtomBuilder<EleT, NumT, VecT> 
+impl<EleT, NumT, VecT> AtomBuilder<EleT, NumT, VecT>
 where
     NumT: Float + Default,
-    VecT: IntoIterator<Item=NumT> + Default
+    VecT: IntoIterator<Item = NumT> + Default,
 {
     pub fn new() -> Self {
         Self {
@@ -68,7 +68,7 @@ where
             charge: None,
             position: None,
             velocity: None,
-            acceleration: None
+            acceleration: None,
         }
     }
     pub fn element(mut self, element: EleT) -> Self {
@@ -115,18 +115,23 @@ where
             acceleration: self.acceleration.unwrap_or_default(),
         }
     }
-
-
 }
-impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> IsAtomic<EleT, NumT, VecT> for Atom<EleT, NumT, VecT> {}
+impl<EleT, NumT: Float, VecT: IntoIterator<Item = NumT>> Atomic<EleT, NumT, VecT>
+    for Atom<EleT, NumT, VecT>
+{
+}
 
-impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> HasElement<EleT> for Atom<EleT, NumT, VecT> {
+impl<EleT, NumT: Float, VecT: IntoIterator<Item = NumT>> HasElement<EleT>
+    for Atom<EleT, NumT, VecT>
+{
     fn get_element(&self) -> &EleT {
         return &self.element;
     }
 }
 
-impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> Connected<Vec<String>> for Atom<EleT, NumT, VecT> {
+impl<EleT, NumT: Float, VecT: IntoIterator<Item = NumT>> Connected<Vec<String>>
+    for Atom<EleT, NumT, VecT>
+{
     fn force(&self) {}
     fn get_neighbors(&self) -> &Vec<String> {
         return &self.neighbors;
@@ -139,13 +144,15 @@ impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> Connected<Vec<String>> fo
     }
 }
 
-impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> HasMass<NumT> for Atom<EleT, NumT, VecT> {
+impl<EleT, NumT: Float, VecT: IntoIterator<Item = NumT>> HasMass<NumT> for Atom<EleT, NumT, VecT> {
     fn set_mass(&mut self, mass: NumT) {
         self.mass = mass;
     }
 }
 
-impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> HasCharge<NumT> for Atom<EleT, NumT, VecT> {
+impl<EleT, NumT: Float, VecT: IntoIterator<Item = NumT>> HasCharge<NumT>
+    for Atom<EleT, NumT, VecT>
+{
     fn force(&self) {
         todo!()
     }
@@ -162,7 +169,9 @@ impl<EleT> IsSpatial for Atom<EleT, f64, Vec<f64>> {
     }
 }
 
-impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> HasPhysics<VecT> for Atom<EleT, NumT, VecT> {
+impl<EleT, NumT: Float, VecT: IntoIterator<Item = NumT>> HasPhysics<VecT>
+    for Atom<EleT, NumT, VecT>
+{
     fn set_position(&mut self, pos: VecT) {
         self.position = pos;
     }
@@ -191,14 +200,8 @@ mod tests {
     #[test]
     fn test_atom_builder() {
         let atom = AtomBuilder::<Elements, f64, Vec<f64>>::new()
-        .element(Elements::H(0))
-        .build();
+            .element(Elements::H(0))
+            .build();
         matches!(*atom.get_element(), Elements::H(0));
     }
-}
-
-// needs to implement Bondable
-struct Molecule {
-    atoms: Vec<String>,
-    neighbors: HashMap<String, Vec<String>>,
 }

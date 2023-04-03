@@ -11,14 +11,14 @@ pub enum Elements {
     X(u32),
 }
 
-pub trait ForceField<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> {
+pub trait ForceField<EleT, NumT: Float, VecT: IntoIterator<Item = NumT>> {
     fn mass(&self, element: &EleT) -> NumT;
     fn charge(&self, element: &EleT) -> NumT;
     fn atom(&self, element: EleT) -> Atom<EleT, NumT, VecT>;
     fn pairwise_interactions(&self, e1: &EleT, e2: &EleT) -> Box<dyn Fn(NumT) -> NumT>;
 }
 
-pub trait ParticleGenerator<ParT, EleT>  {
+pub trait ParticleGenerator<ParT, EleT> {
     fn generate_particle(&self, element: EleT) -> ParT;
 }
 
@@ -28,11 +28,10 @@ where
 {
     // we're creating a very simple, almost silly interaction: some coefficient divided by the pairwise distance.
     // Frankly, it's mostly for just testing.  Also, we need to move k into the closure to ensure the lifetime is respected.
-    return Box::new(move |r: NumT | -> NumT {
+    return Box::new(move |r: NumT| -> NumT {
         if r <= l {
             return <NumT as Real>::min_value(); // fake out for getting too close to the atomic radius.
-        }
-        else {
+        } else {
             return k / (r.powf(exp));
         }
     });
@@ -53,10 +52,10 @@ impl ParticleGenerator<Atom<Elements, f64, Vec<f64>>, Elements> for SIN<Elements
 impl ForceField<Elements, f64, Vec<f64>> for SIN<Elements> {
     fn atom(&self, element: Elements) -> Atom<Elements, f64, Vec<f64>> {
         AtomBuilder::new()
-        .element(element.clone())
-        .charge(self.charge(&element))
-        .mass(self.mass(&element))
-        .build()
+            .element(element.clone())
+            .charge(self.charge(&element))
+            .mass(self.mass(&element))
+            .build()
     }
     fn mass(&self, element: &Elements) -> f64 {
         match element {

@@ -1,7 +1,7 @@
 use crate::Legion::ForceFields::SIN::{Elements, ForceField};
-use crate::Legion::Topology::atom::IsAtomic;
+use crate::Legion::Topology::atom::Atomic;
 use crate::Legion::Topology::particle::HasPhysics;
-use crate::Legion::Topology::spaceTime::ContainsParticles;
+use crate::Legion::Topology::cell::ContainsParticles;
 use num_traits::float::FloatCore;
 use num_traits::real::Real;
 use num_traits::{Float, Zero};
@@ -61,7 +61,7 @@ where
 // this is KIND of a specific implementation, but also not really.  Trying to make it as generic as possible, although I'm not sure this is the way, so to speak.
 // We need to limit this to number types that have add!
 // Doing a lot of limits here, which makes some sense as this is a rather specific function
-impl<ParT: IsAtomic<Elements, NumT, Vec<NumT>>, NumT> Integrator<ParT, Elements, NumT, Vec<NumT>>
+impl<ParT: Atomic<Elements, NumT, Vec<NumT>>, NumT> Integrator<ParT, Elements, NumT, Vec<NumT>>
     for Leapfrog<NumT>
 where
     NumT: FloatCore
@@ -120,7 +120,7 @@ mod tests {
     use super::*;
     use crate::Legion::ForceFields::SIN::{SIN, Elements, ForceField};
     use crate::Legion::Topology::atom::{HasElement, Atom, Connected};
-    use crate::Legion::Topology::spaceTime::{SpaceTime};
+    use crate::Legion::Topology::cell::{Cell};
     use std::collections::HashMap;
 
     #[test]
@@ -167,7 +167,7 @@ mod tests {
         // set neighbors
         atomA.set_neighbors(vec![atomB.id.clone()]);
         atomB.set_neighbors(vec![atomA.id.clone()]);
-        let mut space_time = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
+        let mut space_time = Cell::<Atom<Elements, f64, Vec<f64>>, f64>::new();
         let mut particles = HashMap::<String, Atom<Elements, f64, Vec<f64>>>::new();
         let name = atomA.id.clone();
         particles.insert(atomA.id.clone(), atomA);

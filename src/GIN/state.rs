@@ -13,9 +13,9 @@ use winit::{
 use crate::Legion::{
     Dynamics::integrator::{Integrator, Leapfrog},
     ForceFields::SIN::{self, Elements},
-    Topology::atom::{Atom, IsAtomic},
+    Topology::atom::{Atom, Atomic},
     Topology::particle::{HasPhysics},
-    Topology::spaceTime::{ContainsParticles, SpaceTime},
+    Topology::cell::{ContainsParticles, Cell},
 };
 
 use crate::GIN::{camera, instance, time};
@@ -24,7 +24,7 @@ const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 60.0;
 
 pub struct State <EleT, NumT, ParT, VecT>
 where
-    ParT: IsAtomic<EleT, NumT, VecT>,
+    ParT: Atomic<EleT, NumT, VecT>,
     VecT: IntoIterator<Item = NumT>,
     NumT: Float
 {
@@ -53,7 +53,7 @@ where
     pub(crate) instances: Vec<instance::Instance>,
     pub(crate) instance_buffer: wgpu::Buffer,
     pub(crate) rng: rand::rngs::ThreadRng,
-    pub(crate) space_time: SpaceTime<ParT, NumT>,
+    pub(crate) cell: Cell<ParT, NumT>,
     pub(crate) dimensions: u32,
     pub(crate) integrator: Leapfrog<NumT>,
     pub(crate) sin: SIN::SIN<EleT>,
@@ -92,19 +92,19 @@ impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
         );
 
         // update the dynamics!  DO NOT WRITE DURING THIS TIME.
-        // let newWorld: HashMap::<String, Box<dyn IsAtomic>> = HashMap::new();
+        // let newWorld: HashMap::<String, Box<dyn Atomic>> = HashMap::new();
         let mut accVec = HashMap::<String, Vec<f64>>::new();
-        for (name, _) in self.space_time.get_particles() {
+        for (name, _) in self.cell.get_particles() {
             accVec.insert(
                 name.clone(),
                 self.integrator
-                    .calculate_forces(name.clone(), &self.space_time, &self.sin),
+                    .calculate_forces(name.clone(), &self.cell, &self.sin),
             );
         }
 
         // NOW we want to write.  So we use a different method: get mut particles!
         for (atom, acc) in accVec.iter_mut() {
-            let particle = self.space_time.get_mut_particles().get_mut(atom);
+            let particle = self.cell.get_mut_particles().get_mut(atom);
             match particle {
                 Some(a) => {
                     let (pos, vel, acc) = self.integrator.integrate(a, acc.to_vec());
@@ -121,7 +121,7 @@ impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
             let current = instance.rotation;
             instance.rotation = amount * current;
             let atom_pos = self
-                .space_time
+                .cell
                 .get_particles()
                 .get(&instance.id.clone().unwrap())
                 .unwrap()
