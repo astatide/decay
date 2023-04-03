@@ -23,7 +23,7 @@ pub trait IsAtomic<EleT, NumT, VecT: IntoIterator<Item=NumT>>:
 }
 
 // needs to implement Connected, Charge, Bonded, HasPhysics, IsSpatial
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Atom<EleT, NumT, VecT>
 where
     NumT: Float,
@@ -180,6 +180,20 @@ impl<EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> HasPhysics<VecT> for Atom
     }
     fn get_acceleration(&self) -> &VecT {
         return &self.acceleration;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Legion::ForceFields::SIN::Elements;
+
+    #[test]
+    fn test_atom_builder() {
+        let atom = AtomBuilder::<Elements, f64, Vec<f64>>::new()
+        .element(Elements::H(0))
+        .build();
+        matches!(*atom.get_element(), Elements::H(0));
     }
 }
 

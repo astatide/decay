@@ -75,10 +75,6 @@ where
     fn integrate(&self, atom: &ParT, mut acc: Vec<NumT>) -> (Vec<NumT>, Vec<NumT>, Vec<NumT>) {
         let mut pos = atom.get_position().clone();
         let mut vel = atom.get_velocity().clone();
-        let mut oAcc = atom.get_acceleration().clone();
-        for i in 0..pos.len() {
-            acc[i] += oAcc[i];
-        }
         for i in 0..pos.len() {
             pos[i] += (vel[i] * (self.dt)) + (acc[i] * (FloatCore::powi(self.dt, 2) * 0.5));
         }
@@ -115,5 +111,69 @@ where
             }
         }
         return force_sum;
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Legion::ForceFields::SIN::{SIN, Elements, ForceField};
+    use crate::Legion::Topology::atom::{HasElement, Atom, Connected};
+    use crate::Legion::Topology::spaceTime::{SpaceTime};
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_create_integrator() {
+        let integrator = Leapfrog::<f64>::new();
+        matches!(integrator.integrator_type, IntegratorTypes::LeapfrogVelocityVerlet);
+    }
+
+    #[test]
+    fn test_distance() {
+        let SinFF = SIN::<Elements> {
+            description: "SIN".to_string(),
+            particle_type: Vec::new(),
+        };
+        let mut atomA = SinFF.atom(Elements::H(0));
+        let mut atomB = SinFF.atom(Elements::H(0));
+        let posA = vec![1.0, 1.0, 1.0];
+        let posB = vec![0.0, 0.0, 0.0];
+        atomA.set_position(posA);
+        atomB.set_position(posB);
+        let d = distance(&atomA, &atomB);
+        assert_eq!(d, vec![1.0, 1.0, 1.0]);
+    }
+
+    #[test]
+    fn test_calculate_forces_and_integrate() {
+        let integrator = Leapfrog::<f64>::new();
+        let SinFF = SIN::<Elements> {
+            description: "SIN".to_string(),
+            particle_type: Vec::new(),
+        };
+        let mut atomA = SinFF.atom(Elements::H(0));
+        let mut atomB = SinFF.atom(Elements::H(0));
+        // set positions
+        let posA = vec![1.0, 1.0, 1.0];
+        let posB = vec![0.0, 0.0, 0.0];
+        atomA.set_position(posA);
+        atomB.set_position(posB);
+        // set velocity
+        let velA = vec![1.0, 1.0, 1.0];
+        let velB = vec![0.0, 0.0, 0.0];
+        atomA.set_velocity(velA);
+        atomB.set_velocity(velB);
+        // set neighbors
+        atomA.set_neighbors(vec![atomB.id.clone()]);
+        atomB.set_neighbors(vec![atomA.id.clone()]);
+        let mut space_time = SpaceTime::<Atom<Elements, f64, Vec<f64>>, f64>::new();
+        let mut particles = HashMap::<String, Atom<Elements, f64, Vec<f64>>>::new();
+        let name = atomA.id.clone();
+        particles.insert(atomA.id.clone(), atomA);
+        particles.insert(atomB.id.clone(), atomB);
+        space_time.set_particles(particles);
+        let acc = integrator.calculate_forces(name.clone(), &space_time, &SinFF);
+        let (pos, vel, acc) = integrator.integrate(space_time.get_particles().get(&name).unwrap(), acc);
     }
 }

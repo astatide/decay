@@ -3,7 +3,7 @@ use num_traits::{float::FloatCore, real::Real, Float};
 use crate::Legion::Topology::atom::{Atom, AtomBuilder};
 
 // it's useful to include the mass
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Elements {
     H(u32),
     C(u32),
@@ -43,12 +43,6 @@ pub struct SIN<ParT> {
     pub particle_type: Vec<ParT>,
 }
 
-// impl<ParT, EleT> ParticleGenerator<ParT, EleT> for SIN<EleT> {
-//     fn generate_particle(&self, element: EleT) -> ParT {
-//         todo!()
-//     }
-// }
-
 impl ParticleGenerator<Atom<Elements, f64, Vec<f64>>, Elements> for SIN<Elements> {
     fn generate_particle(&self, element: Elements) -> Atom<Elements, f64, Vec<f64>> {
         return self.atom(element);
@@ -87,5 +81,31 @@ impl ForceField<Elements, f64, Vec<f64>> for SIN<Elements> {
             Elements::O(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
             Elements::X(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Legion::ForceFields::SIN::Elements;
+    use crate::Legion::Topology::atom::HasElement;
+
+    #[test]
+    fn test_create_force_field() {
+        let SinFF = SIN::<Elements> {
+            description: "SIN".to_string(),
+            particle_type: Vec::new(),
+        };
+        assert_eq!(SinFF.description, "SIN".to_string());
+    }
+
+    #[test]
+    fn test_force_field_atom_builder() {
+        let SinFF = SIN::<Elements> {
+            description: "SIN".to_string(),
+            particle_type: Vec::new(),
+        };
+        let atom = SinFF.atom(Elements::H(0));
+        matches!(atom.get_element(), Elements::H(0));
     }
 }
