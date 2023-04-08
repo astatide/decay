@@ -86,9 +86,9 @@ impl DecayExport {
             .rng()
             .particles()
             .dimensions()
-            .space_time()
+            .cell()
             .sin()
-            .space_time_set_particles(Elements::H((0)))
+            .cell_set_particles(Elements::H((0)))
             .integrator()
             .build();
 

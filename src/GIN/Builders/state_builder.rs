@@ -1,35 +1,33 @@
-use std::{collections::HashMap};
-use std::marker::PhantomData;
 use num_traits::Float;
+use std::collections::HashMap;
+use std::marker::PhantomData;
 
-use crate::GIN::state::State;
 use crate::Legion::ForceFields::SIN::ParticleGenerator;
+use crate::GIN::state::State;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
 use rand::{prelude::Distribution, Rng};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
-use winit::{
-    window::Window,
-};
+use winit::window::Window;
 
 use crate::Legion::{
-    Dynamics::integrator::{Leapfrog},
+    Dynamics::integrator::Leapfrog,
     ForceFields::SIN::{self, Elements},
-    Topology::atom::{Atom, Connected, IsAtomic},
+    Topology::atom::{Atom, Atomic, Connected},
     Topology::particle::{HasPhysics, IsSpatial},
-    Topology::spaceTime::{SpaceTime},
+    Topology::cell::Cell,
 };
 
 use crate::GIN::{camera, instance, primitives, time, vertex};
 
 pub trait StateBuilderParticles<EleT> {
-    fn space_time_set_particles(self, element: EleT) -> Self;
+    fn cell_set_particles(self, element: EleT) -> Self;
 }
 
 pub struct StateBuilder<EleT, NumT, ParT, VecT>
 where
-    ParT: IsAtomic<EleT, NumT, VecT>,
+    ParT: Atomic<EleT, NumT, VecT>,
     VecT: IntoIterator<Item = NumT>,
     NumT: Float,
 {
@@ -61,8 +59,8 @@ where
     instances: Option<Vec<instance::Instance>>,
     instance_buffer: Option<wgpu::Buffer>,
     rng: Option<rand::rngs::ThreadRng>,
-    particles: Option<HashMap::<String, ParT>>,
-    space_time: Option<SpaceTime<ParT, NumT>>,
+    particles: Option<HashMap<String, ParT>>,
+    cell: Option<Cell<ParT, NumT>>,
     dimensions: Option<u32>,
     integrator: Option<Leapfrog<NumT>>,
     sin: Option<SIN::SIN<EleT>>,
@@ -70,7 +68,7 @@ where
 
 impl<EleT, NumT: Float, ParT, VecT> StateBuilder<EleT, NumT, ParT, VecT>
 where
-    ParT: IsAtomic<EleT, NumT, VecT> + IsSpatial,
+    ParT: Atomic<EleT, NumT, VecT> + IsSpatial,
     VecT: IntoIterator<Item = NumT>,
 {
     pub fn new(window: Window) -> Self {
@@ -104,7 +102,7 @@ where
             instance_buffer: None,
             rng: None,
             particles: None,
-            space_time: None,
+            cell: None,
             dimensions: None,
             integrator: None,
             sin: None,
@@ -130,7 +128,15 @@ where
         // # Safety
         // The surface needs to live as long as the window that created it.
         // State owns the window so this should be safe.
-        self.surface = unsafe { Some(self.instance.as_ref().unwrap().create_surface(&self.window).unwrap()) };
+        self.surface = unsafe {
+            Some(
+                self.instance
+                    .as_ref()
+                    .unwrap()
+                    .create_surface(&self.window)
+                    .unwrap(),
+            )
+        };
         self
     }
 
@@ -175,7 +181,11 @@ where
     }
 
     pub fn config(mut self) -> Self {
-        let surface_caps = self.surface.as_ref().unwrap().get_capabilities(&self.adapter.as_ref().unwrap());
+        let surface_caps = self
+            .surface
+            .as_ref()
+            .unwrap()
+            .get_capabilities(&self.adapter.as_ref().unwrap());
         // Shader code in this tutorial assumes an sRGB surface texture. Using a different
         // one will result all the colors coming out darker. If you want to support non
         // sRGB surfaces, you'll need to account for that when drawing to the frame.
@@ -195,108 +205,114 @@ where
             alpha_mode: surface_caps.alpha_modes[0],
             view_formats: vec![],
         };
-        self.surface.as_ref().unwrap().configure(&self.device.as_ref().unwrap(), &config);
+        self.surface
+            .as_ref()
+            .unwrap()
+            .configure(&self.device.as_ref().unwrap(), &config);
         self.config = Some(config);
         self
     }
 
     pub fn render_pipeline(mut self) -> Self {
         // load in the shaders!
-        let shader = self
-            .device
-            .as_ref().unwrap()
-            .create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("../../shaders/shader.wgsl").into()),
-            });
-
-        // camera render stuff
-        let camera_bind_group_layout =
+        let shader =
             self.device
-                .as_ref().unwrap()
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    }],
-                    label: Some("camera_bind_group_layout"),
+                .as_ref()
+                .unwrap()
+                .create_shader_module(wgpu::ShaderModuleDescriptor {
+                    label: Some("Shader"),
+                    source: wgpu::ShaderSource::Wgsl(
+                        include_str!("../../shaders/shader.wgsl").into(),
+                    ),
                 });
 
         // camera render stuff
-        let time_bind_group_layout =
-            self.device
-                .as_ref().unwrap()
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    entries: &[wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        visibility: wgpu::ShaderStages::VERTEX,
-                        ty: wgpu::BindingType::Buffer {
-                            ty: wgpu::BufferBindingType::Uniform,
-                            has_dynamic_offset: false,
-                            min_binding_size: None,
-                        },
-                        count: None,
-                    }],
-                    label: Some("time_bind_group_layout"),
-                });
+        let camera_bind_group_layout = self.device.as_ref().unwrap().create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("camera_bind_group_layout"),
+            },
+        );
+
+        // camera render stuff
+        let time_bind_group_layout = self.device.as_ref().unwrap().create_bind_group_layout(
+            &wgpu::BindGroupLayoutDescriptor {
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("time_bind_group_layout"),
+            },
+        );
 
         let render_pipeline_layout =
             self.device
-                .as_ref().unwrap()
+                .as_ref()
+                .unwrap()
                 .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                     label: Some("Render Pipeline Layout"),
                     bind_group_layouts: &[&camera_bind_group_layout, &time_bind_group_layout],
                     push_constant_ranges: &[],
                 });
 
-        let render_pipeline = self
-            .device
-            .as_ref().unwrap()
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("Render Pipeline"),
-                layout: Some(&render_pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: "vs_main", // 1.
-                    buffers: &[vertex::Vertex::desc(), instance::InstanceRaw::desc()],
-                },
-                fragment: Some(wgpu::FragmentState {
-                    // 3.
-                    module: &shader,
-                    entry_point: "fs_main",
-                    targets: &[Some(wgpu::ColorTargetState {
-                        // 4.
-                        format: self.config.as_ref().unwrap().format,
-                        blend: Some(wgpu::BlendState::REPLACE),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                }),
-                primitive: wgpu::PrimitiveState {
-                    topology: wgpu::PrimitiveTopology::TriangleList, // 1.
-                    strip_index_format: None,
-                    front_face: wgpu::FrontFace::Ccw, // 2.
-                    cull_mode: Some(wgpu::Face::Back),
-                    // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
-                    polygon_mode: wgpu::PolygonMode::Fill,
-                    // Requires Features::DEPTH_CLIP_CONTROL
-                    unclipped_depth: false,
-                    // Requires Features::CONSERVATIVE_RASTERIZATION
-                    conservative: false,
-                },
-                depth_stencil: None, // 1.
-                multisample: wgpu::MultisampleState {
-                    count: 1,                         // 2.
-                    mask: !0,                         // 3.
-                    alpha_to_coverage_enabled: false, // 4.
-                },
-                multiview: None, // 5.
-            });
+        let render_pipeline =
+            self.device
+                .as_ref()
+                .unwrap()
+                .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                    label: Some("Render Pipeline"),
+                    layout: Some(&render_pipeline_layout),
+                    vertex: wgpu::VertexState {
+                        module: &shader,
+                        entry_point: "vs_main", // 1.
+                        buffers: &[vertex::Vertex::desc(), instance::InstanceRaw::desc()],
+                    },
+                    fragment: Some(wgpu::FragmentState {
+                        // 3.
+                        module: &shader,
+                        entry_point: "fs_main",
+                        targets: &[Some(wgpu::ColorTargetState {
+                            // 4.
+                            format: self.config.as_ref().unwrap().format,
+                            blend: Some(wgpu::BlendState::REPLACE),
+                            write_mask: wgpu::ColorWrites::ALL,
+                        })],
+                    }),
+                    primitive: wgpu::PrimitiveState {
+                        topology: wgpu::PrimitiveTopology::TriangleList, // 1.
+                        strip_index_format: None,
+                        front_face: wgpu::FrontFace::Ccw, // 2.
+                        cull_mode: Some(wgpu::Face::Back),
+                        // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                        polygon_mode: wgpu::PolygonMode::Fill,
+                        // Requires Features::DEPTH_CLIP_CONTROL
+                        unclipped_depth: false,
+                        // Requires Features::CONSERVATIVE_RASTERIZATION
+                        conservative: false,
+                    },
+                    depth_stencil: None, // 1.
+                    multisample: wgpu::MultisampleState {
+                        count: 1,                         // 2.
+                        mask: !0,                         // 3.
+                        alpha_to_coverage_enabled: false, // 4.
+                    },
+                    multiview: None, // 5.
+                });
 
         self.render_pipeline = Some(render_pipeline);
         self.time_bind_group_layout = Some(time_bind_group_layout);
@@ -305,27 +321,29 @@ where
     }
 
     pub fn vertex_buffer(mut self) -> Self {
-        let vertex_buffer = self
-            .device
-            .as_ref().unwrap()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(primitives::VERTICES),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
+        let vertex_buffer =
+            self.device
+                .as_ref()
+                .unwrap()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Vertex Buffer"),
+                    contents: bytemuck::cast_slice(primitives::VERTICES),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
         self.vertex_buffer = Some(vertex_buffer);
         self
     }
 
     pub fn index_buffer(mut self) -> Self {
-        let index_buffer = self
-            .device
-            .as_ref().unwrap()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(primitives::INDICES),
-                usage: wgpu::BufferUsages::INDEX,
-            });
+        let index_buffer =
+            self.device
+                .as_ref()
+                .unwrap()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Index Buffer"),
+                    contents: bytemuck::cast_slice(primitives::INDICES),
+                    usage: wgpu::BufferUsages::INDEX,
+                });
         self.index_buffer = Some(index_buffer);
         self
     }
@@ -349,7 +367,8 @@ where
             target: (0.0, 0.0, 0.0).into(),
             // which way is "up"
             up: cgmath::Vector3::unit_y(),
-            aspect: self.config.as_ref().unwrap().width as f32 / self.config.as_ref().unwrap().height as f32,
+            aspect: self.config.as_ref().unwrap().width as f32
+                / self.config.as_ref().unwrap().height as f32,
             fovy: 45.0,
             znear: 0.1,
             zfar: 100.0,
@@ -366,27 +385,32 @@ where
     }
 
     pub fn camera_buffer(mut self) -> Self {
-        let camera_buffer = self
-            .device
-            .as_ref().unwrap()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Camera Buffer"),
-                contents: bytemuck::cast_slice(&[self.camera_uniform.unwrap()]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+        let camera_buffer =
+            self.device
+                .as_ref()
+                .unwrap()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Camera Buffer"),
+                    contents: bytemuck::cast_slice(&[self.camera_uniform.unwrap()]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
         self.camera_buffer = Some(camera_buffer);
         self
     }
 
     pub fn camera_bind_group(mut self) -> Self {
-        let camera_bind_group = self.device.as_ref().unwrap().create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.camera_bind_group_layout.as_ref().unwrap(),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: self.camera_buffer.as_ref().unwrap().as_entire_binding(),
-            }],
-            label: Some("camera_bind_group"),
-        });
+        let camera_bind_group =
+            self.device
+                .as_ref()
+                .unwrap()
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    layout: &self.camera_bind_group_layout.as_ref().unwrap(),
+                    entries: &[wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.camera_buffer.as_ref().unwrap().as_entire_binding(),
+                    }],
+                    label: Some("camera_bind_group"),
+                });
         self.camera_bind_group = Some(camera_bind_group);
         self
     }
@@ -409,27 +433,32 @@ where
     }
 
     pub fn time_buffer(mut self) -> Self {
-        let time_buffer = self
-            .device
-            .as_ref().unwrap()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Time Buffer"),
-                contents: bytemuck::cast_slice(&[self.time_uniform.unwrap()]),
-                usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            });
+        let time_buffer =
+            self.device
+                .as_ref()
+                .unwrap()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Time Buffer"),
+                    contents: bytemuck::cast_slice(&[self.time_uniform.unwrap()]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                });
         self.time_buffer = Some(time_buffer);
         self
     }
 
     pub fn time_bind_group(mut self) -> Self {
-        let time_bind_group = self.device.as_ref().unwrap().create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &self.time_bind_group_layout.as_ref().unwrap(),
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: self.time_buffer.as_ref().unwrap().as_entire_binding(),
-            }],
-            label: Some("time_bind_group"),
-        });
+        let time_bind_group =
+            self.device
+                .as_ref()
+                .unwrap()
+                .create_bind_group(&wgpu::BindGroupDescriptor {
+                    layout: &self.time_bind_group_layout.as_ref().unwrap(),
+                    entries: &[wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: self.time_buffer.as_ref().unwrap().as_entire_binding(),
+                    }],
+                    label: Some("time_bind_group"),
+                });
         self.time_bind_group = Some(time_bind_group);
         self
     }
@@ -481,14 +510,15 @@ where
             .iter()
             .map(instance::Instance::to_raw)
             .collect::<Vec<_>>();
-        let instance_buffer = self
-            .device
-            .as_ref().unwrap()
-            .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(&instance_data),
-                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
-            });
+        let instance_buffer =
+            self.device
+                .as_ref()
+                .unwrap()
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Instance Buffer"),
+                    contents: bytemuck::cast_slice(&instance_data),
+                    usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                });
         self.instance_buffer = Some(instance_buffer);
         self
     }
@@ -509,9 +539,9 @@ where
         self
     }
 
-    pub fn space_time(mut self) -> Self {
-        let space_time = SpaceTime::<ParT, NumT>::new();
-        self.space_time = Some(space_time);
+    pub fn cell(mut self) -> Self {
+        let cell = Cell::<ParT, NumT>::new();
+        self.cell = Some(cell);
         self
     }
 
@@ -558,7 +588,7 @@ where
             instances: self.instances.unwrap(),
             instance_buffer: self.instance_buffer.unwrap(),
             rng: self.rng.unwrap(),
-            space_time: self.space_time.unwrap(),
+            cell: self.cell.unwrap(),
             dimensions: self.dimensions.unwrap(),
             integrator: self.integrator.unwrap(),
             sin: self.sin.unwrap(),
@@ -566,16 +596,20 @@ where
     }
 }
 
-impl StateBuilderParticles<Elements> for StateBuilder<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> 
-where
+impl StateBuilderParticles<Elements>
+    for StateBuilder<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>
 {
-    fn space_time_set_particles(mut self, element: Elements) -> Self {
+    fn cell_set_particles(mut self, element: Elements) -> Self {
         let mut priorAtom = "".to_string();
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
         let mut allAtoms = Vec::<String>::new();
         let mut atomHashMap: HashMap<String, Atom<Elements, f64, Vec<f64>>> = HashMap::new();
         for instance in self.instances.as_mut().unwrap() {
-            let mut atom: Atom<Elements, f64, Vec<f64>> = self.sin.as_ref().unwrap().generate_particle(element.clone());
+            let mut atom: Atom<Elements, f64, Vec<f64>> = self
+                .sin
+                .as_ref()
+                .unwrap()
+                .generate_particle(element.clone());
             atom.generate_spatial_coordinates(3);
             instance.id = Some(atom.get_id().clone());
             let pos = vec![
@@ -602,8 +636,7 @@ where
             allAtoms.push(atom.id.clone());
             atomHashMap.insert(atom.id.clone(), atom);
         }
-        self.space_time.as_mut().unwrap().set_particles(atomHashMap);
+        self.cell.as_mut().unwrap().set_particles(atomHashMap);
         self
     }
-
 }
