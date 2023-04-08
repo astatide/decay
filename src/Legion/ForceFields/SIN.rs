@@ -75,10 +75,10 @@ impl ForceField<Elements, f64, Vec<f64>> for SIN<Elements> {
     }
     fn pairwise_interactions(&self, e1: &Elements, e2: &Elements) -> Box<dyn Fn(f64) -> f64> {
         match e1 {
-            Elements::H(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
-            Elements::C(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
-            Elements::O(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
-            Elements::X(_) => GenerateBasicPairwiseInteractions(-1.0, 0.01, 2.0),
+            Elements::H(_) => GenerateBasicPairwiseInteractions(10.0, 0.0, 2.0),
+            Elements::C(_) => GenerateBasicPairwiseInteractions(10.0, 0.0, 2.0),
+            Elements::O(_) => GenerateBasicPairwiseInteractions(10.0, 0.0, 2.0),
+            Elements::X(_) => GenerateBasicPairwiseInteractions(10.0, 0.0, 2.0),
         }
     }
 }
