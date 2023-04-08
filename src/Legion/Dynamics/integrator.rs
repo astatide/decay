@@ -167,13 +167,13 @@ mod tests {
         // set neighbors
         atomA.set_neighbors(vec![atomB.id.clone()]);
         atomB.set_neighbors(vec![atomA.id.clone()]);
-        let mut space_time = Cell::<Atom<Elements, f64, Vec<f64>>, f64>::new();
+        let mut cell = Cell::<Atom<Elements, f64, Vec<f64>>, f64>::new();
         let mut particles = HashMap::<String, Atom<Elements, f64, Vec<f64>>>::new();
         let name = atomA.id.clone();
         particles.insert(atomA.id.clone(), atomA);
         particles.insert(atomB.id.clone(), atomB);
-        space_time.set_particles(particles);
-        let acc = integrator.calculate_forces(name.clone(), &space_time, &SinFF);
-        let (pos, vel, acc) = integrator.integrate(space_time.get_particles().get(&name).unwrap(), acc);
+        cell.set_particles(particles);
+        let acc = integrator.calculate_forces(name.clone(), &cell, &SinFF);
+        let (pos, vel, acc) = integrator.integrate(cell.get_particles().get(&name).unwrap(), acc);
     }
 }
