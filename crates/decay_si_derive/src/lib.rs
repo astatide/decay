@@ -56,20 +56,22 @@ const SI: [(&str, f64); 25] = [
     ("Quecto", -30.0),
 ];
 
+const OPS: [(&str, &str, &str); 4] = [("Add", "add", "+"), ("Sub", "sub", "-"), ("Mul", "mul", "*"), ("Div", "div", "/")];
+
 #[proc_macro_error]
 #[proc_macro_derive(SITypes)]
 pub fn derive_SI(input: TokenStream) -> TokenStream {
     let mut output = String::new(); // we'll be adding everything into this.
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident; // basic name, such as "Meter"
-    // let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
     let tt = ast.generics.type_params().next().unwrap(); // think f32 or f64
     let target = quote! { #tt };
+    let where_clause = format!("where {}: FloatCore + Add + Mul + Sub + Div + std::ops::Mul<f64, Output = {}>", target, target);
     for (i, si_1) in SI.iter().enumerate() {
         // create the basic type.
-        // don't forget the deref macro!
+        // don't forget the deref and other macros!
         output += "#[derive(SIDeref, PartialEq, Debug, Copy, Clone)]";
-        output += format!("struct {}{}<{}>({}) where {}: FloatCore + Add + Mul + Sub + Div + std::ops::Mul<f64, Output = {}>;", si_1.0, name, target, target, target, target).as_str(); // ex: struct KiloMeter<f32>(f32);
+        output += format!("struct {}{}<{}>({}) {};", si_1.0, name, target, target, where_clause).as_str(); // ex: struct KiloMeter<f32>(f32);
         let si1_form = format!("{}{}<{}>", si_1.0, name, target);
         for (j, si_2) in SI.iter().enumerate() {
             if si_1.0 != si_2.0 {
@@ -77,55 +79,39 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                 let base: f64 = 10.0;
                 let diff: f64 = (si_2.1 - si_1.1);
                 let power_diff = base.powf(diff) as f64;
-                assert!(power_diff != 0.0);
-                if (diff <= 7.0) {
-                    let si2_form = format!("{}{}<{}>", si_2.0, name, target);
-                    output += format!("impl<{}> Add<{}> for {} where {}: FloatCore + Add + Mul + Sub + Div + std::ops::Mul<f64, Output = {}> {{", target, si1_form.as_str(), si2_form.as_str(), target, target).as_str();
-                    output += format!("type Output = {};", si2_form).as_str();
-                    output += "";
-                    output += format!("fn add(self, other: {}) -> {} {{", si1_form.as_str(), si2_form.as_str()).as_str();
-                    // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.9
-                    output += format!("{}{}::<{}>(self.0 + (other.0 * {:.6}))", si_2.0, name, target, power_diff).as_str();
-                    output += "}";
-                    output += "}";
+                let t_diff = if format!("{target}") == "f64" {
+                    f64::DIGITS
+                } else if format!("{target}") == "f32" {
+                    f32::DIGITS
+                } else if format!("{target}") == "f16" {
+                    3
+                } else {
+                    7
+                };
+                if (diff <= t_diff.into()) {
+                    let si2_form = format!("{}{name}<{target}>", si_2.0);
+                    for (k, op) in OPS.iter().enumerate() {
+                        let op_name = op.0;
+                        let op_nlow = op.1;
+                        let op_symb = op.2;
+                        output += format!("impl<{target}> {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
+                        output += format!("type Output = {si2_form};").as_str();
+                        output += format!(
+                            "fn {op_nlow}(self, other: {si1_form}) -> {si2_form} {{"
+                        )
+                        .as_str();
+                        // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
+                        output += format!(
+                            "{}{name}::<{target}>(self.0 {op_symb} (other.0 * {power_diff:.6}))",
+                            si_2.0
+                        )
+                        .as_str();
+                        output += "} }";
+                    }
                 }
-                // impl<f32> Add for Meters<f32> {
-                //     type Output = Meters<f32>;
-
-                //     fn add(self, other: Meters<f32>) -> Self::Output {
-                //         if std::f32::DIGITS >= (self.1 - other.1) {
-                //             // there's enough significance to make it work.
-                //             self
-                //         }
-                //         else {
-                //             // not enough significance in the underlying float type to make a difference.
-                //             self
-                //         }
-                //     } 
-                // }
             }
         }
     }
-    // 
-    // let prefix = &tIter.next();
-    // // let SIprefixes = syn::parse_str::4<TokenStream>("kilo");
-    // let SIprefixes: [proc_macro2::TokenStream; 2] = [(String::from("kilo")+&name.to_string()).parse().unwrap(), (String::from("nano")+&name.to_string()).parse().unwrap()];
-    // // let typeName = prefix + name;
-    // let output = quote! {
-    //     // struct prefix <#target> (#target, SI);
-    //     #( struct #SIprefixes <#target>(#target, SI);
-    //     impl #impl_generics SITypes for #SIprefixes #impl_generics #where_clause {
-    //         type Target = SI;
-
-    //         fn base(&self) -> &Self::Target {
-    //             &self.1
-    //         }
-    //     }
-    //     )*
-    //     // struct #(#SIprefixes)* #name <#target> (#target, SI);
-    // };
-
-    // TokenStream::from(output)
     output.parse().unwrap()
 }
 

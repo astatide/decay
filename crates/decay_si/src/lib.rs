@@ -53,11 +53,14 @@ trait SITypes {
 
 // #[derive(SIDeref)]
 
-#[derive(SITypes)]
-struct Meters<NumT>(NumT) where NumT: FloatCore + Add + Mul + Sub + Div;
+// #[derive(SITypes)]
+// struct Meters<NumT>(NumT);
+
+// #[derive(SITypes)]
+// struct Newtons<NumT>(NumT);
 
 #[derive(SITypes)]
-struct Newtons<NumT>(NumT) where NumT: FloatCore + Add + Mul + Sub + Div;
+struct meter<f32>(f32);
 
 // #[derive(SITypes)]
 // struct MetersTest<NumT>(NumT);
@@ -121,12 +124,12 @@ mod tests {
     fn it_works() {
         // let result = add(2, 2);
         // assert_eq!(result, 4);
-        let km = KiloMeters::<f64>(1.0);
-        let mm = HectoMeters::<f64>(1.0);
-        let m = OneMeters::<f64>(1.0);
+        let km = Kilometer(1.0);
+        let mm = Hectometer(1.0);
+        let m = Onemeter(1.0);
         // assert_eq!(*(km + mm), 11.0);
         assert_eq!(*(m + km), 1.001); // returns kilometers
         assert_eq!(*(km + m), 1001.0); // returns meters
-        let gn = GigaNewtons::<f64>(0.0);
+        // let gn = GigaNewtons::<f64>(0.0);
     }
 }
