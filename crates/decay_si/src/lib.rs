@@ -121,9 +121,9 @@ mod tests {
     fn it_works() {
         // let result = add(2, 2);
         // assert_eq!(result, 4);
-        let km = KiloMeters::<f32>(1.0);
-        let mm = DeciMeters::<f32>(1.0);
-        // assert_eq(km + mm, 11);
+        let km = KiloMeters::<f64>(1.0);
+        let mm = HectoMeters::<f64>(1.0);
+        assert_eq!(*(km + mm), 11.0);
         let gn = GigaNewtons::<f64>(0.0);
     }
 }
