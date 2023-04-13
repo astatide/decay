@@ -89,8 +89,20 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                 7
             };
             if (diff <= t_diff.into()) {
-                // good news!  create the add/mul/sub/divide types.
                 let si2_form = format!("{}{name}<{target}>", si_2.0);
+                // create the to/from implementation!
+                if i != j {
+                    output += format!("impl<{target}> From<{si2_form}> for {si1_form} {where_clause} {{").as_str();
+                    output += format!(
+                        "fn from(other: {si2_form}) -> Self {{"
+                    )
+                    .as_str();
+                    // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
+                    output += format!("Self {{").as_str();
+                    output += format!("0: other.0 * {power_diff:.6}").as_str();
+                    output += "} } }";
+                }
+                // good news!  create the add/mul/sub/divide types.
                 for (k, op) in OPS.iter().enumerate() {
                     let op_name = op.0;
                     let op_nlow = op.1;

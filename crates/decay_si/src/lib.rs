@@ -1,4 +1,5 @@
 use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign, Deref};
+use std::convert::From;
 use num_traits::float::FloatCore;
 #[macro_use]
 extern crate decay_si_derive;
@@ -22,5 +23,7 @@ mod tests {
         assert_eq!(*d, 1001.0); // returns meters
         assert_eq!(*(kM(1.0) + kM(1.0)), 2.0);
         assert_eq!(*(kM(1.0) + 1.0), 2.0);
+        assert_eq!((*kM(1.0) + 1.0), 2.0);
+        assert_eq!(Onemeter::<f64>::from(kM(1.0) + 1.0), M(2000.0));
     }
 }
