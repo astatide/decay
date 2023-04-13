@@ -28,6 +28,7 @@ pub fn derive_deref(input: TokenStream) -> TokenStream {
     TokenStream::from(output)
 }
 
+// https://www.nist.gov/pml/owm/metric-si-prefixes
 const SI: [(&str, f64); 25] = [
     ("Quetta", 30.0),
     ("Ronna", 27.0),
@@ -57,6 +58,7 @@ const SI: [(&str, f64); 25] = [
 ];
 
 const OPS: [(&str, &str, &str); 4] = [("Add", "add", "+"), ("Sub", "sub", "-"), ("Mul", "mul", "*"), ("Div", "div", "/")];
+const OPS_ASSIGN: [(&str, &str, &str); 4] = [("AddAssign", "add_assign", "+"), ("SubAssign", "sub_assign", "-"), ("MulAssign", "mul_assign", "*"), ("DivAssign", "div_assign", "/")];
 
 #[proc_macro_error]
 #[proc_macro_derive(SITypes)]
@@ -74,7 +76,7 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
         output += format!("struct {}{}<{}>({}) {};", si_1.0, name, target, target, where_clause).as_str(); // ex: struct KiloMeter<f32>(f32);
         let si1_form = format!("{}{}<{}>", si_1.0, name, target);
         for (j, si_2) in SI.iter().enumerate() {
-            if si_1.0 != si_2.0 {
+            {
                 // good news!  create the add/mul/sub/divide types.
                 let base: f64 = 10.0;
                 let diff: f64 = (si_2.1 - si_1.1);
@@ -107,6 +109,20 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                         )
                         .as_str();
                         output += "} }";
+                    }
+                    for (k, op) in OPS_ASSIGN.iter().enumerate() {
+                        let op_name = op.0;
+                        let op_nlow = op.1;
+                        let op_symb = op.2;
+                        output += format!("impl<{target}> {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
+                        output += format!(
+                            "fn {op_nlow}(&mut self, other: {si1_form}) {{"
+                        )
+                        .as_str();
+                        // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
+                        output += format!("*self = Self {{").as_str();
+                        output += format!("0: self.0 {op_symb} (other.0 * {power_diff:.6})").as_str();
+                        output += "}; } }";
                     }
                 }
             }
