@@ -72,14 +72,13 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
     let mut output = String::new(); // we'll be adding everything into this.
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident; // basic name, such as "Meter"
-    // let tt = ast.generics.type_params().next().unwrap(); // think f32 or f64
     let fields = match &ast.data {
         Data::Struct(DataStruct { fields: Fields::Unnamed(fields), .. }) => &fields.unnamed,
         _ => panic!("expected a struct with unnamed fields"),
-    };
+    }; // this gets the unnamed field; we only need want one this is just for the wrapped tuple.
     let tt = fields.iter().map(|field| &field.ty).next();
     let target = quote! { #tt };
-    let where_clause = format!("where {}: FloatCore + Add + Mul + Sub + Div + std::ops::Mul<f64, Output = {}>", target, target);
+    let where_clause = format!("where {target}: FloatCore + Add + Mul + Sub + Div");
     for (i, si_1) in SI.iter().enumerate() {
         // create the basic type.
         // don't forget the deref and other macros!
@@ -109,7 +108,7 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                     )
                     .as_str();
                     output += format!("Self {{").as_str();
-                    output += format!("0: other.0 * {power_diff:.6}").as_str();
+                    output += format!("0: other.0 * {power_diff:.15}").as_str();
                     output += "} } }";
                 }
                 // good news!  create the add/mul/sub/divide types.
@@ -124,7 +123,7 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                     )
                     .as_str();
                     output += format!(
-                        "{}{name}(self.0 {op_symb} (other.0 * {power_diff:.6}))",
+                        "{}{name}(self.0 {op_symb} (other.0 * {power_diff:.15}))",
                         si_2.0
                     )
                     .as_str();
@@ -140,7 +139,7 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                     )
                     .as_str();
                     output += format!("*self = Self {{").as_str();
-                    output += format!("0: self.0 {op_symb} (other.0 * {power_diff:.6})").as_str();
+                    output += format!("0: self.0 {op_symb} (other.0 * {power_diff:.15})").as_str();
                     output += "}; } }";
                 }
             }

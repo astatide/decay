@@ -5,7 +5,7 @@ use num_traits::float::FloatCore;
 extern crate decay_si_derive;
 
 #[derive(SITypes)]
-struct meter(f64);
+struct meter(f32);
 
 #[cfg(test)]
 mod tests {
