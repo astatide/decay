@@ -125,6 +125,39 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                 }
             }
         }
+        // add basic types to deal with primitives
+        for (k, op) in OPS.iter().enumerate() {
+            let op_name = op.0;
+            let op_nlow = op.1;
+            let op_symb = op.2;
+            output += format!("impl<{target}> {op_name}<{target}> for {si1_form} {where_clause} {{").as_str();
+            output += format!("type Output = {si1_form};").as_str();
+            output += format!(
+                "fn {op_nlow}(self, other: {target}) -> {si1_form} {{"
+            )
+            .as_str();
+            // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
+            output += format!(
+                "{}{name}::<{target}>(self.0 {op_symb} other)",
+                si_1.0
+            )
+            .as_str();
+            output += "} }";
+        }
+        for (k, op) in OPS_ASSIGN.iter().enumerate() {
+            let op_name = op.0;
+            let op_nlow = op.1;
+            let op_symb = op.2;
+            output += format!("impl<{target}> {op_name}<{target}> for {si1_form} {where_clause} {{").as_str();
+            output += format!(
+                "fn {op_nlow}(&mut self, other: {target}) {{"
+            )
+            .as_str();
+            // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
+            output += format!("*self = Self {{").as_str();
+            output += format!("0: self.0 {op_symb} other").as_str();
+            output += "}; } }";
+        }
     }
     output.parse().unwrap()
 }
