@@ -22,10 +22,12 @@ mod tests {
         let Angstrom = AngMeter;
         assert_eq!(*(M(1.0) + kM(1.0)), 1.001); // returns kilometers
         assert_eq!(*(kM(1.0) + M(1.0)), 1001.0); // returns meters
-        let mut d = kM(1.0);
-        d += M(1.0); // this converts to a meter?!  BLAH.
-        d += 1.0;
-        assert_eq!(*d, 1002.0); // returns meters
+        let mut d = kM(1.0); // 1.0
+        d += 1.0; // 2.0
+        assert_eq!(*d, 2.0);
+        d += Meter(1.0); // this converts to a meter?!  BLAH.  Now 2001.0
+        d += 1.0; // Now 2002.
+        assert_eq!(*d, 2002.0); // returns meters
         assert_eq!(*(kM(1.0) + kM(1.0)), 2.0);
         assert_eq!(*(kM(1.0) + 1.0), 2.0);
         assert_eq!((*kM(1.0) + 1.0), 2.0);
