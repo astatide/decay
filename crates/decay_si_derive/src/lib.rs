@@ -76,54 +76,52 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
         output += format!("struct {}{}<{}>({}) {};", si_1.0, name, target, target, where_clause).as_str(); // ex: struct KiloMeter<f32>(f32);
         let si1_form = format!("{}{}<{}>", si_1.0, name, target);
         for (j, si_2) in SI.iter().enumerate() {
-            {
+            let base: f64 = 10.0;
+            let diff: f64 = (si_2.1 - si_1.1);
+            let power_diff = base.powf(diff) as f64;
+            let t_diff = if format!("{target}") == "f64" {
+                f64::DIGITS
+            } else if format!("{target}") == "f32" {
+                f32::DIGITS
+            } else if format!("{target}") == "f16" {
+                3
+            } else {
+                7
+            };
+            if (diff <= t_diff.into()) {
                 // good news!  create the add/mul/sub/divide types.
-                let base: f64 = 10.0;
-                let diff: f64 = (si_2.1 - si_1.1);
-                let power_diff = base.powf(diff) as f64;
-                let t_diff = if format!("{target}") == "f64" {
-                    f64::DIGITS
-                } else if format!("{target}") == "f32" {
-                    f32::DIGITS
-                } else if format!("{target}") == "f16" {
-                    3
-                } else {
-                    7
-                };
-                if (diff <= t_diff.into()) {
-                    let si2_form = format!("{}{name}<{target}>", si_2.0);
-                    for (k, op) in OPS.iter().enumerate() {
-                        let op_name = op.0;
-                        let op_nlow = op.1;
-                        let op_symb = op.2;
-                        output += format!("impl<{target}> {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
-                        output += format!("type Output = {si2_form};").as_str();
-                        output += format!(
-                            "fn {op_nlow}(self, other: {si1_form}) -> {si2_form} {{"
-                        )
-                        .as_str();
-                        // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
-                        output += format!(
-                            "{}{name}::<{target}>(self.0 {op_symb} (other.0 * {power_diff:.6}))",
-                            si_2.0
-                        )
-                        .as_str();
-                        output += "} }";
-                    }
-                    for (k, op) in OPS_ASSIGN.iter().enumerate() {
-                        let op_name = op.0;
-                        let op_nlow = op.1;
-                        let op_symb = op.2;
-                        output += format!("impl<{target}> {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
-                        output += format!(
-                            "fn {op_nlow}(&mut self, other: {si1_form}) {{"
-                        )
-                        .as_str();
-                        // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
-                        output += format!("*self = Self {{").as_str();
-                        output += format!("0: self.0 {op_symb} (other.0 * {power_diff:.6})").as_str();
-                        output += "}; } }";
-                    }
+                let si2_form = format!("{}{name}<{target}>", si_2.0);
+                for (k, op) in OPS.iter().enumerate() {
+                    let op_name = op.0;
+                    let op_nlow = op.1;
+                    let op_symb = op.2;
+                    output += format!("impl<{target}> {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
+                    output += format!("type Output = {si2_form};").as_str();
+                    output += format!(
+                        "fn {op_nlow}(self, other: {si1_form}) -> {si2_form} {{"
+                    )
+                    .as_str();
+                    // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
+                    output += format!(
+                        "{}{name}::<{target}>(self.0 {op_symb} (other.0 * {power_diff:.6}))",
+                        si_2.0
+                    )
+                    .as_str();
+                    output += "} }";
+                }
+                for (k, op) in OPS_ASSIGN.iter().enumerate() {
+                    let op_name = op.0;
+                    let op_nlow = op.1;
+                    let op_symb = op.2;
+                    output += format!("impl<{target}> {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
+                    output += format!(
+                        "fn {op_nlow}(&mut self, other: {si1_form}) {{"
+                    )
+                    .as_str();
+                    // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
+                    output += format!("*self = Self {{").as_str();
+                    output += format!("0: self.0 {op_symb} (other.0 * {power_diff:.6})").as_str();
+                    output += "}; } }";
                 }
             }
         }

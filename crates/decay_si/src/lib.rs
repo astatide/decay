@@ -21,5 +21,6 @@ mod tests {
         d += M(1.0);
         assert_eq!(*d, 1001.0); // returns meters
         assert_eq!(*(kM(1.0) + kM(1.0)), 2.0);
+        // assert_eq!(*(kM(1.0) + 1.0), 2.0);
     }
 }
