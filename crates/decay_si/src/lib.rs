@@ -16,6 +16,7 @@ mod tests {
         let kM = KiloMeter;
         let hM = HectoMeter;
         let M = Meter;
+        let Angstrom = AngMeter;
         assert_eq!(*(M(1.0) + kM(1.0)), 1.001); // returns kilometers
         assert_eq!(*(kM(1.0) + M(1.0)), 1001.0); // returns meters
         let mut d = kM(1.0);

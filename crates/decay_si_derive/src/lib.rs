@@ -35,7 +35,7 @@ pub fn derive_deref(input: TokenStream) -> TokenStream {
 }
 
 // https://www.nist.gov/pml/owm/metric-si-prefixes
-const SI: [(&str, f64); 25] = [
+const SI: [(&str, f64); 26] = [
     ("Quetta", 30.0),
     ("Ronna", 27.0),
     ("Yotta", 24.0),
@@ -54,6 +54,7 @@ const SI: [(&str, f64); 25] = [
     ("Milli", -3.0),
     ("Micro", -6.0),
     ("Nano", -9.0),
+    ("Ang", -10.0),
     ("Pico", -12.0),
     ("Femto", -15.0),
     ("Atto", -18.0),
