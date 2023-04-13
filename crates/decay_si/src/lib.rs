@@ -123,7 +123,10 @@ mod tests {
         // assert_eq!(result, 4);
         let km = KiloMeters::<f64>(1.0);
         let mm = HectoMeters::<f64>(1.0);
-        assert_eq!(*(km + mm), 11.0);
+        let m = OneMeters::<f64>(1.0);
+        // assert_eq!(*(km + mm), 11.0);
+        assert_eq!(*(m + km), 1.001); // returns kilometers
+        assert_eq!(*(km + m), 1001.0); // returns meters
         let gn = GigaNewtons::<f64>(0.0);
     }
 }

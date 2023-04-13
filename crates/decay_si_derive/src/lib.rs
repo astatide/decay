@@ -68,23 +68,24 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
     for (i, si_1) in SI.iter().enumerate() {
         // create the basic type.
         // don't forget the deref macro!
-        output += "#[derive(SIDeref, PartialEq, Debug)]";
+        output += "#[derive(SIDeref, PartialEq, Debug, Copy, Clone)]";
         output += format!("struct {}{}<{}>({}) where {}: FloatCore + Add + Mul + Sub + Div + std::ops::Mul<f64, Output = {}>;", si_1.0, name, target, target, target, target).as_str(); // ex: struct KiloMeter<f32>(f32);
         let si1_form = format!("{}{}<{}>", si_1.0, name, target);
         for (j, si_2) in SI.iter().enumerate() {
             if si_1.0 != si_2.0 {
                 // good news!  create the add/mul/sub/divide types.
                 let base: f64 = 10.0;
-                let diff: f64 = (si_2.1 - si_1.1) as f64;
+                let diff: f64 = (si_2.1 - si_1.1);
                 let power_diff = base.powf(diff) as f64;
-                if (diff <= 6.0) {
+                assert!(power_diff != 0.0);
+                if (diff <= 7.0) {
                     let si2_form = format!("{}{}<{}>", si_2.0, name, target);
                     output += format!("impl<{}> Add<{}> for {} where {}: FloatCore + Add + Mul + Sub + Div + std::ops::Mul<f64, Output = {}> {{", target, si1_form.as_str(), si2_form.as_str(), target, target).as_str();
                     output += format!("type Output = {};", si2_form).as_str();
                     output += "";
                     output += format!("fn add(self, other: {}) -> {} {{", si1_form.as_str(), si2_form.as_str()).as_str();
                     // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.9
-                    output += format!("{}{}::<{}>(self.0 + (other.0 * {:.1}))", si_2.0, name, target, power_diff as f64).as_str();
+                    output += format!("{}{}::<{}>(self.0 + (other.0 * {:.6}))", si_2.0, name, target, power_diff).as_str();
                     output += "}";
                     output += "}";
                 }
