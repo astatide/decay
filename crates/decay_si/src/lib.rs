@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul, Deref};
+use std::ops::{Add, Sub, Mul, Div, Deref};
 use num_traits::float::FloatCore;
 #[macro_use]
 extern crate decay_si_derive;
@@ -46,9 +46,25 @@ impl Sub for SI {
 //     fn deref(&self);
 // }
 
-#[derive(SIDeref)]
-struct Meters<NumT>(NumT, SI);
-struct Newtons<NumT>(NumT, SI);
+trait SITypes {
+    type Target;
+    fn base(&self) -> &Self::Target;
+}
+
+// #[derive(SIDeref)]
+
+#[derive(SITypes)]
+struct Meters<NumT>(NumT) where NumT: FloatCore + Add + Mul + Sub + Div;
+
+#[derive(SITypes)]
+struct Newtons<NumT>(NumT) where NumT: FloatCore + Add + Mul + Sub + Div;
+
+// #[derive(SITypes)]
+// struct MetersTest<NumT>(NumT);
+
+// macro_rules! create_si {
+
+// }
 
 // impl<NumT> Deref for Meters<NumT> {
 //     type Target = NumT;
@@ -58,48 +74,44 @@ struct Newtons<NumT>(NumT, SI);
 //     }
 // }
 
-impl<NumT> Mul<SI> for Meters<NumT> {
-    type Output = Meters<NumT>;
+// impl<NumT> Mul<SI> for Meters<NumT> {
+//     type Output = Meters<NumT>;
 
-    fn mul(self, si: SI) -> Self::Output {
-        // put in a check for the significance here, but briefly assume we're fine.
-        self
-    }
-}
+//     fn mul(self, si: SI) -> Self::Output {
+//         // put in a check for the significance here, but briefly assume we're fine.
+//         self
+//     }
+// }
 
-impl<f32> Add for Meters<f32> {
-    type Output = Meters<f32>;
+// impl<f32> Add for Meters<f32> {
+//     type Output = Meters<f32>;
 
-    fn add(self, other: Meters<f32>) -> Self::Output {
-        if std::f32::DIGITS >= (self.1 - other.1) {
-            // there's enough significance to make it work.
-            self
-        }
-        else {
-            // not enough significance in the underlying float type to make a difference.
-            self
-        }
-    } 
-}
+//     fn add(self, other: Meters<f32>) -> Self::Output {
+//         if std::f32::DIGITS >= (self.1 - other.1) {
+//             // there's enough significance to make it work.
+//             self
+//         }
+//         else {
+//             // not enough significance in the underlying float type to make a difference.
+//             self
+//         }
+//     } 
+// }
 
-impl<f32> Sub for Meters<f32> {
-    type Output = Meters<f32>;
+// impl<f32> Sub for Meters<f32> {
+//     type Output = Meters<f32>;
 
-    fn sub(self, other: Meters<f32>) -> Self::Output {
-        if std::f32::DIGITS >= (self.1 - other.1) {
-            // there's enough significance to make it work.
-            self
-        }
-        else {
-            // not enough significance in the underlying float type to make a difference.
-            self
-        }
-    } 
-}
-
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+//     fn sub(self, other: Meters<f32>) -> Self::Output {
+//         if std::f32::DIGITS >= (self.1 - other.1) {
+//             // there's enough significance to make it work.
+//             self
+//         }
+//         else {
+//             // not enough significance in the underlying float type to make a difference.
+//             self
+//         }
+//     } 
+// }
 
 #[cfg(test)]
 mod tests {
@@ -107,7 +119,11 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        // let result = add(2, 2);
+        // assert_eq!(result, 4);
+        let km = KiloMeters::<f32>(1.0);
+        let mm = DeciMeters::<f32>(1.0);
+        // assert_eq(km + mm, 11);
+        let gn = GigaNewtons::<f64>(0.0);
     }
 }
