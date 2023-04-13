@@ -48,7 +48,7 @@ const SI: [(&str, f64); 25] = [
     ("Kilo", 3.0),
     ("Hecto", 2.0),
     ("Deka", 1.0),
-    ("Unity", 0.0),
+    ("", 0.0),
     ("Deci", -1.0),
     ("Centi", -2.0),
     ("Milli", -3.0),
@@ -82,8 +82,11 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
     for (i, si_1) in SI.iter().enumerate() {
         // create the basic type.
         // don't forget the deref and other macros!
-        output += "#[derive(SIDeref, PartialEq, Debug, Copy, Clone)]";
-        output += format!("struct {}{name}({target}) {where_clause};", si_1.0).as_str(); // ex: struct KiloMeter<f32>(f32);
+        // this creates the struct for everything but the already defined one.
+        if si_1.0 != "" {
+            output += "#[derive(SIDeref, PartialEq, Debug, Copy, Clone)]";
+            output += format!("struct {}{name}({target}) {where_clause};", si_1.0).as_str(); // ex: struct KiloMeter<f32>(f32);
+        }
         let si1_form = format!("{}{name}", si_1.0);
         for (j, si_2) in SI.iter().enumerate() {
             let base: f64 = 10.0;
