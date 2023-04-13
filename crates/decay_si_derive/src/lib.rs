@@ -3,7 +3,7 @@ extern crate syn;
 #[macro_use]
 extern crate quote;
 use crate::quote::ToTokens;
-use syn::{parse_macro_input, parse_quote, DeriveInput};
+use syn::{parse_macro_input, parse_quote, DeriveInput, Data, DataStruct, Fields};
 
 use proc_macro_error::proc_macro_error;
 
@@ -14,7 +14,13 @@ pub fn derive_deref(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident;
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
-    let target = ast.generics.type_params().next();
+    let fields = match &ast.data {
+        Data::Struct(DataStruct { fields: Fields::Unnamed(fields), .. }) => &fields.unnamed,
+        _ => panic!("expected a struct with unnamed fields"),
+    };
+    let target = fields.iter().map(|field| &field.ty).next();
+    // let target = ast.fields.into_iter().next().ty;
+    // let target = ast.generics.type_params().next();
     let output = quote! {
         impl #impl_generics std::ops::Deref for #name #impl_generics #where_clause {
             type Target = #target;
@@ -66,15 +72,20 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
     let mut output = String::new(); // we'll be adding everything into this.
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident; // basic name, such as "Meter"
-    let tt = ast.generics.type_params().next().unwrap(); // think f32 or f64
+    // let tt = ast.generics.type_params().next().unwrap(); // think f32 or f64
+    let fields = match &ast.data {
+        Data::Struct(DataStruct { fields: Fields::Unnamed(fields), .. }) => &fields.unnamed,
+        _ => panic!("expected a struct with unnamed fields"),
+    };
+    let tt = fields.iter().map(|field| &field.ty).next();
     let target = quote! { #tt };
     let where_clause = format!("where {}: FloatCore + Add + Mul + Sub + Div + std::ops::Mul<f64, Output = {}>", target, target);
     for (i, si_1) in SI.iter().enumerate() {
         // create the basic type.
         // don't forget the deref and other macros!
         output += "#[derive(SIDeref, PartialEq, Debug, Copy, Clone)]";
-        output += format!("struct {}{}<{}>({}) {};", si_1.0, name, target, target, where_clause).as_str(); // ex: struct KiloMeter<f32>(f32);
-        let si1_form = format!("{}{}<{}>", si_1.0, name, target);
+        output += format!("struct {}{}({}) {};", si_1.0, name, target, where_clause).as_str(); // ex: struct KiloMeter<f32>(f32);
+        let si1_form = format!("{}{}", si_1.0, name);
         for (j, si_2) in SI.iter().enumerate() {
             let base: f64 = 10.0;
             let diff: f64 = (si_2.1 - si_1.1);
@@ -89,15 +100,14 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                 7
             };
             if (diff <= t_diff.into()) {
-                let si2_form = format!("{}{name}<{target}>", si_2.0);
+                let si2_form = format!("{}{name}", si_2.0);
                 // create the to/from implementation!
                 if i != j {
-                    output += format!("impl<{target}> From<{si2_form}> for {si1_form} {where_clause} {{").as_str();
+                    output += format!("impl From<{si2_form}> for {si1_form} {where_clause} {{").as_str();
                     output += format!(
                         "fn from(other: {si2_form}) -> Self {{"
                     )
                     .as_str();
-                    // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
                     output += format!("Self {{").as_str();
                     output += format!("0: other.0 * {power_diff:.6}").as_str();
                     output += "} } }";
@@ -107,15 +117,14 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                     let op_name = op.0;
                     let op_nlow = op.1;
                     let op_symb = op.2;
-                    output += format!("impl<{target}> {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
+                    output += format!("impl {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
                     output += format!("type Output = {si2_form};").as_str();
                     output += format!(
                         "fn {op_nlow}(self, other: {si1_form}) -> {si2_form} {{"
                     )
                     .as_str();
-                    // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
                     output += format!(
-                        "{}{name}::<{target}>(self.0 {op_symb} (other.0 * {power_diff:.6}))",
+                        "{}{name}(self.0 {op_symb} (other.0 * {power_diff:.6}))",
                         si_2.0
                     )
                     .as_str();
@@ -125,12 +134,11 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                     let op_name = op.0;
                     let op_nlow = op.1;
                     let op_symb = op.2;
-                    output += format!("impl<{target}> {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
+                    output += format!("impl {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
                     output += format!(
                         "fn {op_nlow}(&mut self, other: {si1_form}) {{"
                     )
                     .as_str();
-                    // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
                     output += format!("*self = Self {{").as_str();
                     output += format!("0: self.0 {op_symb} (other.0 * {power_diff:.6})").as_str();
                     output += "}; } }";
@@ -142,15 +150,14 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
             let op_name = op.0;
             let op_nlow = op.1;
             let op_symb = op.2;
-            output += format!("impl<{target}> {op_name}<{target}> for {si1_form} {where_clause} {{").as_str();
+            output += format!("impl {op_name}<{target}> for {si1_form} {where_clause} {{").as_str();
             output += format!("type Output = {si1_form};").as_str();
             output += format!(
                 "fn {op_nlow}(self, other: {target}) -> {si1_form} {{"
             )
             .as_str();
-            // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
             output += format!(
-                "{}{name}::<{target}>(self.0 {op_symb} other)",
+                "{}{name}(self.0 {op_symb} other)",
                 si_1.0
             )
             .as_str();
@@ -160,12 +167,11 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
             let op_name = op.0;
             let op_nlow = op.1;
             let op_symb = op.2;
-            output += format!("impl<{target}> {op_name}<{target}> for {si1_form} {where_clause} {{").as_str();
+            output += format!("impl {op_name}<{target}> for {si1_form} {where_clause} {{").as_str();
             output += format!(
                 "fn {op_nlow}(&mut self, other: {target}) {{"
             )
             .as_str();
-            // here's where we'd do some handling for types; honestly, the only ones we can handle are within one or two different prefixes.
             output += format!("*self = Self {{").as_str();
             output += format!("0: self.0 {op_symb} other").as_str();
             output += "}; } }";
