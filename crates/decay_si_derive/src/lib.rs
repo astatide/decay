@@ -123,7 +123,7 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                     output += format!("impl {op_name}<{si1_form}> for {si2_form} {where_clause} {{").as_str();
                     output += format!("type Output = {si2_form};").as_str();
                     output += format!(
-                        "fn {op_nlow}(self, other: {si1_form}) -> {si2_form} {{"
+                        "fn {op_nlow}(self, other: {si1_form}) -> Self::Output {{"
                     )
                     .as_str();
                     output += format!(
@@ -156,7 +156,7 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
             output += format!("impl {op_name}<{target}> for {si1_form} {where_clause} {{").as_str();
             output += format!("type Output = {si1_form};").as_str();
             output += format!(
-                "fn {op_nlow}(self, other: {target}) -> {si1_form} {{"
+                "fn {op_nlow}(self, other: {target}) -> Self::Output {{"
             )
             .as_str();
             output += format!(
