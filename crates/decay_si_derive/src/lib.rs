@@ -143,7 +143,7 @@ pub fn derive_SI(input: TokenStream) -> TokenStream {
                     )
                     .as_str();
                     output += format!("*self = Self {{").as_str();
-                    output += format!("0: self.0 {op_symb} (other.0 * {power_diff:.15})").as_str();
+                    output += format!("0: self.0 {op_symb} (other.0 * 1.0/{power_diff:.15})").as_str();
                     output += "}; } }";
                 }
             }

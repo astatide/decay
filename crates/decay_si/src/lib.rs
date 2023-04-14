@@ -25,9 +25,9 @@ mod tests {
         let mut d = kM(1.0); // 1.0
         d += 1.0; // 2.0
         assert_eq!(*d, 2.0);
-        d += Meter(1.0); // this converts to a meter?!  BLAH.  Now 2001.0
-        d += 1.0; // Now 2002.
-        assert_eq!(*d, 2002.0); // returns meters
+        d += Meter(1.0); // does not convert to a meter now yay. 2.001!
+        d += 1.0; // Now 3.001
+        assert_eq!(*d, 3.001); // returns meters
         assert_eq!(*(kM(1.0) + kM(1.0)), 2.0);
         assert_eq!(*(kM(1.0) + 1.0), 2.0);
         assert_eq!((*kM(1.0) + 1.0), 2.0);
