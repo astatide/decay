@@ -5,6 +5,13 @@ use winit::{
     window::{WindowBuilder, Window},
 };
 
+// all this is for the macro SI types for now.
+use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign, Deref};
+use std::convert::From;
+use num_traits::float::FloatCore;
+#[macro_use]
+extern crate decay_si_derive;
+
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
 use crate::GIN::{state::{State}, Builders::state_builder::StateBuilder};
@@ -20,10 +27,13 @@ mod GIN;
 static mut HEIGHT: u32 = 200;
 static mut WIDTH: u32 = 200;
 
+#[derive(SITypes, SIDeref, PartialEq, Debug, Copy, Clone)]
+struct Meter(f32);
+
 // static mut STATE: &State;
 #[cfg_attr(target_arch="wasm32", wasm_bindgen)]
 pub struct DecayExport {
-    state: State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>,
+    state: State<Elements, NanoMeter, Atom<Elements, NanoMeter, Vec<NanoMeter>>, Vec<NanoMeter>>,
 }
 
 impl DecayExport {

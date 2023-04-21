@@ -1,4 +1,4 @@
-use num_traits::{Float, Zero};
+use num_traits::{Float, Zero, float::FloatCore};
 use std::collections::HashMap;
 
 // #[derive(Debug)]
@@ -8,13 +8,13 @@ pub trait ContainsParticles<ParT> {
     fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT>;
 }
 
-pub struct Cell<ParT, NumT: Float> {
+pub struct Cell<ParT, NumT: FloatCore> {
     particles: HashMap<String, ParT>,
     time: NumT,
     dimensions: u32,
 }
 
-impl<ParT, NumT: Float> Cell<ParT, NumT> {
+impl<ParT, NumT: FloatCore> Cell<ParT, NumT> {
     pub fn new() -> Self {
         Self {
             particles: HashMap::<String, ParT>::new(),
@@ -28,7 +28,7 @@ impl<ParT, NumT: Float> Cell<ParT, NumT> {
     }
 }
 
-impl<ParT, NumT: Float> ContainsParticles<ParT> for Cell<ParT, NumT> {
+impl<ParT, NumT: FloatCore> ContainsParticles<ParT> for Cell<ParT, NumT> {
     fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT> {
         return &mut self.particles;
     }

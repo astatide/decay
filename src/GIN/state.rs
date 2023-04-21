@@ -1,8 +1,10 @@
 use std::{collections::HashMap};
 use std::marker::PhantomData;
 use num_traits::Float;
+extern crate decay_si_derive;
 
 use cgmath::{num_traits::ToPrimitive, prelude::*};
+use num_traits::float::FloatCore;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use winit::{
@@ -26,7 +28,7 @@ pub struct State <EleT, NumT, ParT, VecT>
 where
     ParT: Atomic<EleT, NumT, VecT>,
     VecT: IntoIterator<Item = NumT>,
-    NumT: Float
+    NumT: FloatCore
 {
     pub(crate) phantom: PhantomData<VecT>,
     pub(crate) surface: wgpu::Surface,

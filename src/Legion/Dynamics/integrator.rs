@@ -7,7 +7,7 @@ use num_traits::real::Real;
 use num_traits::{Float, Zero};
 use uuid::Uuid;
 
-pub trait Integrator<ParT, EleT, NumT: Float, VecT: IntoIterator<Item=NumT>> {
+pub trait Integrator<ParT, EleT, NumT: FloatCore, VecT: IntoIterator<Item=NumT>> {
     fn integrate(&self, particle: &ParT, acc: VecT) -> (VecT, VecT, VecT);
     fn calculate_forces(
         &self,
@@ -21,7 +21,7 @@ pub enum IntegratorTypes {
     LeapfrogVelocityVerlet,
 }
 
-pub struct Leapfrog<NumT: Float> {
+pub struct Leapfrog<NumT: FloatCore> {
     pub id: String,
     pub integrator_type: IntegratorTypes,
     pub dt: NumT,
@@ -47,7 +47,7 @@ where
 // specific implementation blah blah
 impl<NumT> Leapfrog<NumT>
 where
-    NumT: Float
+    NumT: FloatCore
 {
     pub fn new() -> Self {
         Self {

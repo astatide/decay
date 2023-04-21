@@ -1,4 +1,4 @@
-use num_traits::Float;
+use num_traits::{Float, Zero, float::FloatCore};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -29,7 +29,7 @@ pub struct StateBuilder<EleT, NumT, ParT, VecT>
 where
     ParT: Atomic<EleT, NumT, VecT>,
     VecT: IntoIterator<Item = NumT>,
-    NumT: Float,
+    NumT: FloatCore,
 {
     phantom: PhantomData<VecT>,
     instance: Option<wgpu::Instance>,
@@ -66,7 +66,7 @@ where
     sin: Option<SIN::SIN<EleT>>,
 }
 
-impl<EleT, NumT: Float, ParT, VecT> StateBuilder<EleT, NumT, ParT, VecT>
+impl<EleT, NumT: FloatCore, ParT, VecT> StateBuilder<EleT, NumT, ParT, VecT>
 where
     ParT: Atomic<EleT, NumT, VecT> + IsSpatial,
     VecT: IntoIterator<Item = NumT>,

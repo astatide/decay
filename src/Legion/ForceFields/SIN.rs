@@ -11,7 +11,7 @@ pub enum Elements {
     X(u32),
 }
 
-pub trait ForceField<EleT, NumT: Float, VecT: IntoIterator<Item = NumT>> {
+pub trait ForceField<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> {
     fn mass(&self, element: &EleT) -> NumT;
     fn charge(&self, element: &EleT) -> NumT;
     fn atom(&self, element: EleT) -> Atom<EleT, NumT, VecT>;
