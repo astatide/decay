@@ -1,7 +1,7 @@
-use crate::Legion::ForceFields::SIN::{Elements, ForceField};
-use crate::Legion::Topology::atom::Atomic;
-use crate::Legion::Topology::particle::HasPhysics;
-use crate::Legion::Topology::cell::ContainsParticles;
+use crate::ForceFields::SIN::{Elements, ForceField};
+use crate::Topology::atom::Atomic;
+use crate::Topology::particle::HasPhysics;
+use crate::Topology::cell::ContainsParticles;
 use num_traits::float::FloatCore;
 use num_traits::real::Real;
 use num_traits::{Float, Zero};
