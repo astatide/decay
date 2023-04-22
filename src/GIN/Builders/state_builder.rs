@@ -2,7 +2,7 @@ use num_traits::{Float, Zero, float::FloatCore};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
-use crate::Legion::ForceFields::SIN::ParticleGenerator;
+use Legion::ForceFields::SIN::ParticleGenerator;
 use crate::GIN::state::State;
 use cgmath::{num_traits::ToPrimitive, prelude::*};
 use rand::{prelude::Distribution, Rng};
@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 use wgpu::util::DeviceExt;
 use winit::window::Window;
 
-use crate::Legion::{
+use Legion::{
     Dynamics::integrator::Leapfrog,
     ForceFields::SIN::{self, Elements},
     Topology::atom::{Atom, Atomic, Connected},

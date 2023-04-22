@@ -12,7 +12,7 @@ use winit::{
     window::Window,
 };
 
-use crate::Legion::{
+use Legion::{
     Dynamics::integrator::{Integrator, Leapfrog},
     ForceFields::SIN::{self, Elements},
     Topology::atom::{Atom, Atomic},
