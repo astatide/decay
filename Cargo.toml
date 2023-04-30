@@ -30,6 +30,10 @@ nalgebra = "*" # non computer graphics linear algebra
 rand = "0.8.5"
 num = "0.4.0"
 # the other regular dependencies...
+decay_si = { path = "crates/decay_si" }
+decay_si_derive = { path = "crates/decay_si_derive" }
+decay_forge = { path = "crates/decay_forge" }
+Legion = { path = "crates/Legion" }
 
 [dependencies.num-traits]
 version = "0.2"

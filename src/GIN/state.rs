@@ -1,8 +1,10 @@
 use std::{collections::HashMap};
 use std::marker::PhantomData;
 use num_traits::Float;
+extern crate decay_si_derive;
 
 use cgmath::{num_traits::ToPrimitive, prelude::*};
+
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 use winit::{
@@ -10,7 +12,7 @@ use winit::{
     window::Window,
 };
 
-use crate::Legion::{
+use Legion::{
     Dynamics::integrator::{Integrator, Leapfrog},
     ForceFields::SIN::{self, Elements},
     Topology::atom::{Atom, Atomic},
@@ -25,8 +27,7 @@ const ROTATION_SPEED: f32 = 2.0 * std::f32::consts::PI / 60.0;
 pub struct State <EleT, NumT, ParT, VecT>
 where
     ParT: Atomic<EleT, NumT, VecT>,
-    VecT: IntoIterator<Item = NumT>,
-    NumT: Float
+    VecT: IntoIterator<Item = NumT>
 {
     pub(crate) phantom: PhantomData<VecT>,
     pub(crate) surface: wgpu::Surface,
@@ -53,14 +54,14 @@ where
     pub(crate) instances: Vec<instance::Instance>,
     pub(crate) instance_buffer: wgpu::Buffer,
     pub(crate) rng: rand::rngs::ThreadRng,
-    pub(crate) cell: Cell<ParT, NumT>,
+    pub(crate) cell: Cell<ParT, f32>,
     pub(crate) dimensions: u32,
-    pub(crate) integrator: Leapfrog<NumT>,
+    pub(crate) integrator: Leapfrog<f32>,
     pub(crate) sin: SIN::SIN<EleT>,
 }
 
-impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
-    pub fn integrator(&mut self) -> &Leapfrog<f64> {
+impl State<Elements, f32, Atom<Elements, f32, Vec<f32>>, Vec<f32>> {
+    pub fn integrator(&mut self) -> &Leapfrog<f32> {
         &self.integrator
     }
 
@@ -93,7 +94,7 @@ impl State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>> {
 
         // update the dynamics!  DO NOT WRITE DURING THIS TIME.
         // let newWorld: HashMap::<String, Box<dyn Atomic>> = HashMap::new();
-        let mut accVec = HashMap::<String, Vec<f64>>::new();
+        let mut accVec = HashMap::<String, Vec<f32>>::new();
         for (name, _) in self.cell.get_particles() {
             accVec.insert(
                 name.clone(),
