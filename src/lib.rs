@@ -1,9 +1,17 @@
-use crate::{Legion::{ForceFields::SIN::Elements, Topology::atom::Atom}, GIN::Builders::state_builder::StateBuilderParticles};
+use crate::{GIN::Builders::state_builder::StateBuilderParticles};
+use Legion::{ForceFields::SIN::Elements, Topology::atom::Atom};
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop, self},
     window::{WindowBuilder, Window},
 };
+
+// all this is for the macro SI types for now.
+use std::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign, Deref};
+use std::convert::From;
+use num_traits::float::FloatCore;
+#[macro_use]
+extern crate decay_si_derive;
 
 #[cfg(target_arch="wasm32")]
 use wasm_bindgen::prelude::*;
@@ -12,7 +20,6 @@ use crate::GIN::{state::{State}, Builders::state_builder::StateBuilder};
 // mod legion;
 use log::{debug, error, log_enabled, info, Level};
 
-mod Legion;
 mod GIN;
 
 // #[cfg_attr(target_arch="wasm32", wasm_bindgen(start))]
@@ -20,10 +27,19 @@ mod GIN;
 static mut HEIGHT: u32 = 200;
 static mut WIDTH: u32 = 200;
 
+// pub trait DerefsToFloat {
+//     type f32;
+// }
+
+#[derive(SITypes, SIDeref, PartialEq, Debug, Copy, Clone)]
+struct Meter(f32);
+
+// impl DerefsToFloat
+
 // static mut STATE: &State;
 #[cfg_attr(target_arch="wasm32", wasm_bindgen)]
 pub struct DecayExport {
-    state: State<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>,
+    state: State<Elements, f32, Atom<Elements, f32, Vec<f32>>, Vec<f32>>,
 }
 
 impl DecayExport {
@@ -60,7 +76,7 @@ impl DecayExport {
     
         // Adding in the state!
         // let state = State::new(window).await;
-        let state = StateBuilder::<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>::new(window)
+        let state = StateBuilder::<Elements, f32, Atom<Elements, f32, Vec<f32>>, Vec<f32>>::new(window)
             .size()
             .instance()
             .surface()
@@ -88,14 +104,14 @@ impl DecayExport {
             .dimensions()
             .cell()
             .sin()
-            .cell_set_particles(Elements::H((0)))
+            .cell_set_particles(Elements::H(0))
             .integrator()
             .build();
 
         let mut _dt = 0.0;
 
         Self {
-            state: state,
+            state,
         }
     } 
 
