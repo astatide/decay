@@ -27,13 +27,19 @@ mod GIN;
 static mut HEIGHT: u32 = 200;
 static mut WIDTH: u32 = 200;
 
+// pub trait DerefsToFloat {
+//     type f32;
+// }
+
 #[derive(SITypes, SIDeref, PartialEq, Debug, Copy, Clone)]
 struct Meter(f32);
+
+// impl DerefsToFloat
 
 // static mut STATE: &State;
 #[cfg_attr(target_arch="wasm32", wasm_bindgen)]
 pub struct DecayExport {
-    state: State<Elements, NanoMeter, Atom<Elements, NanoMeter, Vec<NanoMeter>>, Vec<NanoMeter>>,
+    state: State<Elements, f32, Atom<Elements, f32, Vec<f32>>, Vec<f32>>,
 }
 
 impl DecayExport {
@@ -70,7 +76,7 @@ impl DecayExport {
     
         // Adding in the state!
         // let state = State::new(window).await;
-        let state = StateBuilder::<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>::new(window)
+        let state = StateBuilder::<Elements, f32, Atom<Elements, f32, Vec<f32>>, Vec<f32>>::new(window)
             .size()
             .instance()
             .surface()
@@ -98,14 +104,14 @@ impl DecayExport {
             .dimensions()
             .cell()
             .sin()
-            .cell_set_particles(Elements::H((0)))
+            .cell_set_particles(Elements::H(0))
             .integrator()
             .build();
 
         let mut _dt = 0.0;
 
         Self {
-            state: state,
+            state,
         }
     } 
 

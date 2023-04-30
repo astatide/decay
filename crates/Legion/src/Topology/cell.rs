@@ -8,13 +8,13 @@ pub trait ContainsParticles<ParT> {
     fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT>;
 }
 
-pub struct Cell<ParT, NumT: FloatCore> {
+pub struct Cell<ParT, NumT> {
     particles: HashMap<String, ParT>,
     time: NumT,
     dimensions: u32,
 }
 
-impl<ParT, NumT: FloatCore> Cell<ParT, NumT> {
+impl<ParT> Cell<ParT, f32> {
     pub fn new() -> Self {
         Self {
             particles: HashMap::<String, ParT>::new(),
@@ -28,7 +28,7 @@ impl<ParT, NumT: FloatCore> Cell<ParT, NumT> {
     }
 }
 
-impl<ParT, NumT: FloatCore> ContainsParticles<ParT> for Cell<ParT, NumT> {
+impl<ParT, NumT> ContainsParticles<ParT> for Cell<ParT, NumT> {
     fn get_mut_particles(&mut self) -> &mut HashMap<String, ParT> {
         return &mut self.particles;
     }

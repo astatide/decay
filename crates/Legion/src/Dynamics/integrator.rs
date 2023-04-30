@@ -7,7 +7,7 @@ use num_traits::real::Real;
 use num_traits::{Float, Zero};
 use uuid::Uuid;
 
-pub trait Integrator<ParT, EleT, NumT: FloatCore, VecT: IntoIterator<Item=NumT>> {
+pub trait Integrator<ParT, EleT, NumT, VecT: IntoIterator<Item=NumT>> {
     fn integrate(&self, particle: &ParT, acc: VecT) -> (VecT, VecT, VecT);
     fn calculate_forces(
         &self,
@@ -21,7 +21,7 @@ pub enum IntegratorTypes {
     LeapfrogVelocityVerlet,
 }
 
-pub struct Leapfrog<NumT: FloatCore> {
+pub struct Leapfrog<NumT> {
     pub id: String,
     pub integrator_type: IntegratorTypes,
     pub dt: NumT,
@@ -33,7 +33,7 @@ pub fn distance<ParT: HasPhysics<Vec<NumT>>, NumT: std::ops::Sub<Output = NumT>>
     B: &ParT,
 ) -> Vec<NumT>
 where
-    NumT: Copy,
+  NumT: Copy,
 {
     let mut r: Vec<NumT> = Vec::new();
     let other_ijk = B.get_position();
@@ -45,10 +45,7 @@ where
 }
 
 // specific implementation blah blah
-impl<NumT> Leapfrog<NumT>
-where
-    NumT: FloatCore
-{
+impl Leapfrog<f32> {
     pub fn new() -> Self {
         Self {
             id: Uuid::new_v4().to_string(),
@@ -61,18 +58,10 @@ where
 // this is KIND of a specific implementation, but also not really.  Trying to make it as generic as possible, although I'm not sure this is the way, so to speak.
 // We need to limit this to number types that have add!
 // Doing a lot of limits here, which makes some sense as this is a rather specific function
-impl<ParT: Atomic<Elements, NumT, Vec<NumT>>, NumT> Integrator<ParT, Elements, NumT, Vec<NumT>>
-    for Leapfrog<NumT>
-where
-    NumT: FloatCore
-        + std::ops::AddAssign
-        + std::ops::Mul<f64, Output = NumT>
-        + std::iter::Sum
-        + rand::distributions::uniform::SampleUniform
-        + Real
-        + Float
+impl<ParT: Atomic<Elements, f32, Vec<f32>>> Integrator<ParT, Elements, f32, Vec<f32>>
+    for Leapfrog<f32>
 {
-    fn integrate(&self, atom: &ParT, mut acc: Vec<NumT>) -> (Vec<NumT>, Vec<NumT>, Vec<NumT>) {
+    fn integrate(&self, atom: &ParT, mut acc: Vec<f32>) -> (Vec<f32>, Vec<f32>, Vec<f32>) {
         let mut pos = atom.get_position().clone();
         let mut vel = atom.get_velocity().clone();
         for i in 0..pos.len() {
@@ -89,21 +78,21 @@ where
         &self,
         name: String,
         world: &impl ContainsParticles<ParT>,
-        sin: &impl ForceField<Elements, NumT, Vec<NumT>>,
-    ) -> Vec<NumT> {
+        sin: &impl ForceField<Elements, f32, Vec<f32>>,
+    ) -> Vec<f32> {
         let atoms = world.get_particles();
         let atom = &atoms[&name];
         let neighbors = atom.get_neighbors();
-        let mut force_sum: Vec<NumT> =
-            vec![<NumT as FloatCore>::min_positive_value(); atom.get_position().len()]; // use the vec macro to prefill with 0.
+        let mut force_sum: Vec<f32> =
+            vec![0.0; atom.get_position().len()]; // use the vec macro to prefill with 0.
 
         for neighbor in neighbors.iter() {
             // get the actual atom
             let na = &atoms[neighbor];
             let pwi = sin.pairwise_interactions(atom.get_element(), na.get_element());
             let d = distance(atom, na);
-            let r = FloatCore::abs(num_traits::Float::sqrt(d.iter().map(|&z| z * z).sum::<NumT>())); // wait, did this work?  Huh!  Crazy nifty.
-            let r_ijk = d.iter().map(|&z| z / r).collect::<Vec<NumT>>(); // collect is what turns the iterator back in a vector, apparently.
+            let r = FloatCore::abs(num_traits::Float::sqrt(d.iter().map(|&z| z * z).sum::<f32>())); // wait, did this work?  Huh!  Crazy nifty.
+            let r_ijk = d.iter().map(|&z| z / r).collect::<Vec<f32>>(); // collect is what turns the iterator back in a vector, apparently.
                                                                         // Now!  Get the forces!
             let force = pwi(r);
             for (i, &z) in r_ijk.iter().enumerate() {

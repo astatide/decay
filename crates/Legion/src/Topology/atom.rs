@@ -27,7 +27,6 @@ pub trait Atomic<EleT, NumT, VecT: IntoIterator<Item = NumT>>:
 #[derive(Debug, Clone, PartialEq)]
 pub struct Atom<EleT, NumT, VecT>
 where
-    NumT: FloatCore,
     VecT: IntoIterator<Item = NumT>,
 {
     pub element: EleT,
@@ -42,7 +41,6 @@ where
 
 pub struct AtomBuilder<EleT, NumT, VecT>
 where
-    NumT: FloatCore,
     VecT: IntoIterator<Item = NumT>,
 {
     pub element: Option<EleT>,
@@ -57,7 +55,7 @@ where
 
 impl<EleT, NumT, VecT> AtomBuilder<EleT, NumT, VecT>
 where
-    NumT: FloatCore + Default,
+    NumT: Default,
     VecT: IntoIterator<Item = NumT> + Default,
 {
     pub fn new() -> Self {
@@ -117,12 +115,12 @@ where
         }
     }
 }
-impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> Atomic<EleT, NumT, VecT>
+impl<EleT, NumT, VecT: IntoIterator<Item = NumT>> Atomic<EleT, NumT, VecT>
     for Atom<EleT, NumT, VecT>
 {
 }
 
-impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> HasElement<EleT>
+impl<EleT, NumT, VecT: IntoIterator<Item = NumT>> HasElement<EleT>
     for Atom<EleT, NumT, VecT>
 {
     fn get_element(&self) -> &EleT {
@@ -130,7 +128,7 @@ impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> HasElement<EleT>
     }
 }
 
-impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> Connected<Vec<String>>
+impl<EleT, NumT, VecT: IntoIterator<Item = NumT>> Connected<Vec<String>>
     for Atom<EleT, NumT, VecT>
 {
     fn force(&self) {}
@@ -145,13 +143,13 @@ impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> Connected<Vec<Strin
     }
 }
 
-impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> HasMass<NumT> for Atom<EleT, NumT, VecT> {
+impl<EleT, NumT, VecT: IntoIterator<Item = NumT>> HasMass<NumT> for Atom<EleT, NumT, VecT> {
     fn set_mass(&mut self, mass: NumT) {
         self.mass = mass;
     }
 }
 
-impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> HasCharge<NumT>
+impl<EleT, NumT, VecT: IntoIterator<Item = NumT>> HasCharge<NumT>
     for Atom<EleT, NumT, VecT>
 {
     fn force(&self) {
@@ -162,7 +160,7 @@ impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> HasCharge<NumT>
     }
 }
 
-impl<EleT> IsSpatial for Atom<EleT, f64, Vec<f64>> {
+impl<EleT> IsSpatial for Atom<EleT, f32, Vec<f32>> {
     fn generate_spatial_coordinates(&mut self, nDim: u32) {
         self.position = vec![0.0; nDim.try_into().unwrap()];
         self.velocity = vec![0.0; nDim.try_into().unwrap()];
@@ -170,7 +168,7 @@ impl<EleT> IsSpatial for Atom<EleT, f64, Vec<f64>> {
     }
 }
 
-impl<EleT, NumT: FloatCore, VecT: IntoIterator<Item = NumT>> HasPhysics<VecT>
+impl<EleT, NumT, VecT: IntoIterator<Item = NumT>> HasPhysics<VecT>
     for Atom<EleT, NumT, VecT>
 {
     fn set_position(&mut self, pos: VecT) {

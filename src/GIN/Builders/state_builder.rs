@@ -1,4 +1,4 @@
-use num_traits::{Float, Zero, float::FloatCore};
+use num_traits::{Float, Zero};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
@@ -29,7 +29,6 @@ pub struct StateBuilder<EleT, NumT, ParT, VecT>
 where
     ParT: Atomic<EleT, NumT, VecT>,
     VecT: IntoIterator<Item = NumT>,
-    NumT: FloatCore,
 {
     phantom: PhantomData<VecT>,
     instance: Option<wgpu::Instance>,
@@ -60,13 +59,13 @@ where
     instance_buffer: Option<wgpu::Buffer>,
     rng: Option<rand::rngs::ThreadRng>,
     particles: Option<HashMap<String, ParT>>,
-    cell: Option<Cell<ParT, NumT>>,
+    cell: Option<Cell<ParT, f32>>,
     dimensions: Option<u32>,
-    integrator: Option<Leapfrog<NumT>>,
+    integrator: Option<Leapfrog<f32>>,
     sin: Option<SIN::SIN<EleT>>,
 }
 
-impl<EleT, NumT: FloatCore, ParT, VecT> StateBuilder<EleT, NumT, ParT, VecT>
+impl<EleT, NumT, ParT, VecT> StateBuilder<EleT, NumT, ParT, VecT>
 where
     ParT: Atomic<EleT, NumT, VecT> + IsSpatial,
     VecT: IntoIterator<Item = NumT>,
@@ -540,7 +539,7 @@ where
     }
 
     pub fn cell(mut self) -> Self {
-        let cell = Cell::<ParT, NumT>::new();
+        let cell = Cell::<ParT, f32>::new();
         self.cell = Some(cell);
         self
     }
@@ -557,7 +556,7 @@ where
     }
 
     pub fn integrator(mut self) -> Self {
-        let integrator = Leapfrog::<NumT>::new();
+        let integrator = Leapfrog::<f32>::new();
         self.integrator = Some(integrator);
         self
     }
@@ -597,15 +596,15 @@ where
 }
 
 impl StateBuilderParticles<Elements>
-    for StateBuilder<Elements, f64, Atom<Elements, f64, Vec<f64>>, Vec<f64>>
+    for StateBuilder<Elements, f32, Atom<Elements, f32, Vec<f32>>, Vec<f32>>
 {
     fn cell_set_particles(mut self, element: Elements) -> Self {
         let mut priorAtom = "".to_string();
         // Add in an atom for each triangle!  Fake a bond, make it work designers!
         let mut allAtoms = Vec::<String>::new();
-        let mut atomHashMap: HashMap<String, Atom<Elements, f64, Vec<f64>>> = HashMap::new();
+        let mut atomHashMap: HashMap<String, Atom<Elements, f32, Vec<f32>>> = HashMap::new();
         for instance in self.instances.as_mut().unwrap() {
-            let mut atom: Atom<Elements, f64, Vec<f64>> = self
+            let mut atom: Atom<Elements, f32, Vec<f32>> = self
                 .sin
                 .as_ref()
                 .unwrap()
@@ -613,13 +612,13 @@ impl StateBuilderParticles<Elements>
             atom.generate_spatial_coordinates(3);
             instance.id = Some(atom.get_id().clone());
             let pos = vec![
-                instance.position.x.to_f64().unwrap(),
-                instance.position.y.to_f64().unwrap(),
-                instance.position.z.to_f64().unwrap(),
+                instance.position.x.to_f32().unwrap(),
+                instance.position.y.to_f32().unwrap(),
+                instance.position.z.to_f32().unwrap(),
             ];
             atom.set_position(pos);
             let mut rng = rand::thread_rng();
-            let sign: rand::distributions::Uniform<f64> =
+            let sign: rand::distributions::Uniform<f32> =
                 rand::distributions::Uniform::from(-1.0..1.1);
             let applyJitter = true;
             if applyJitter {
