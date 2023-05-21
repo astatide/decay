@@ -5,7 +5,7 @@
   "dependencies": {
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
-    "@fontsource/public-sans": "^4.5.12",
+    "@fontsource/public-sans": "^5.0.0",
     "@mui/joy": "^5.0.0-alpha.71",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",
