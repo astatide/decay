@@ -9,7 +9,7 @@ edition = "2021"
 proc-macro = true
 
 [dependencies]
-syn = "2.0.15"
+syn = "2.0.16"
 quote = "1.0"
 strum = "0.24"
 strum_macros = "0.24"
