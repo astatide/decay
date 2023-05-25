@@ -21,7 +21,7 @@ winit = "0.28.6"
 getrandom = { version = "0.2", features = ["js"] }
 env_logger = "0.10"
 log = "0.4"
-wgpu = "0.15"
+wgpu = "0.16"
 cfg-if = "1"
 pollster = "0.3.0" # awaiting the future; simple
 bytemuck = { version = "1.13.1", features = [ "derive" ] }
@@ -43,7 +43,7 @@ features = ["libm"]    # <--- Uncomment if you wish to use `Float` and `Real` wi
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
-wgpu = { version = "0.15", features = ["webgl"]}
+wgpu = { version = "0.16", features = ["webgl"]}
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4.36"
 web-sys = { version = "0.3", features = [
